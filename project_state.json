@@ -1,0 +1,131 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 7,
+  "summary": "MLM web app for Ray Infotech institute. Members pay ₹2750 joining fee and recruit downlines in multiples of 3. On first successful matrix completion, the joining fee is refunded. Subsequent levels earn commissions: 9%, 8%, 7%... down to 1% per level.",
+  "architectural_notes": [
+    "Institute name: Ray Infotech",
+    "MLM type: Matrix with 3-wide downline (each member recruits 3)",
+    "Joining fee: ₹2750; refunded on first matrix fill; then commission levels 9% down to 1%"
+  ],
+  "known_issues": [],
+  "isFixRequest": true,
+  "imageRequirements": "## Edit Images\n- Fix the brand name text spelling so it reads exactly 'Ray Infotech' with correct lettering, maintaining the deep navy and gold professional style (ray-infotech-logo.png > ray-infotech-logo.dim_400x400.png)",
+  "existing_features": [
+    {
+      "id": "feature-build-a-member-registration-page-with-a-form-collecting-name-mobile-number-email-and-sponsor-referral-code-display-the-joining-fee-of-2750-clearly-on-successful-submission-show-the-member-their-unique-referral-member-id",
+      "title": "Build a member registration page with a form collecting name, mobile number, email, and sponsor referral code. Display the joining fee of ₹2750 clearly. On successful submission, show the member their unique referral/member ID.",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-a-member-dashboard-page-showing-current-matrix-status-downline-tree-visualization-3-wide-per-level-total-earnings-refund-status-of-the-joining-fee-and-a-commission-history-table-listing-each-commission-transaction-with-level-amount-and-date",
+      "title": "Build a member dashboard page showing: current matrix status, downline tree visualization (3-wide per level), total earnings, refund status of the joining fee, and a commission history table listing each commission transaction with level, amount, and date.",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-an-admin-panel-page-listing-all-registered-members-their-matrix-positions-payment-refund-status-total-commissions-earned-and-overall-platform-statistics-total-members-total-commissions-paid-total-fees-collected",
+      "title": "Build an admin panel page listing all registered members, their matrix positions, payment/refund status, total commissions earned, and overall platform statistics (total members, total commissions paid, total fees collected).",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-apply-a-professional-trustworthy-visual-theme-for-ray-infotech-use-a-deep-navy-and-gold-color-palette-with-clean-sans-serif-typography-card-based-layouts-and-subtle-gradients-the-brand-name-ray-infotech-should-appear-prominently-in-the-header-navbar-across-all-pages",
+      "title": "Apply a professional, trustworthy visual theme for Ray Infotech: use a deep navy and gold color palette with clean sans-serif typography, card-based layouts, and subtle gradients. The brand name 'Ray Infotech' should appear prominently in the header/navbar across all pages.",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-replace-the-image-element-at-xpath-html-1-body-1-div-1-div-1-main-1-div-1-section-1-div-3-div-1-div-1-img-1-the-hero-section-logo-image-on-the-homepage-with-the-generated-ray-infotech-branded-logo-image-stored-at-frontend-public-assets-generated-ray-infotech-logo-png-render-it-using-an-img-tag-pointing-to-assets-generated-ray-infotech-logo-png-with-appropriate-alt-text-ray-infotech-logo",
+      "title": "Replace the image element at XPath /html[1]/body[1]/div[1]/div[1]/main[1]/div[1]/section[1]/div[3]/div[1]/div[1]/img[1] (the hero section logo/image on the HomePage) with the generated Ray Infotech branded logo image stored at frontend/public/assets/generated/ray-infotech-logo.png. Render it using an <img> tag pointing to /assets/generated/ray-infotech-logo.png with appropriate alt text 'Ray Infotech Logo'.",
+      "reqIds": [
+        "REQ-9"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-regenerate-the-ray-infotech-branded-logo-image-ensuring-the-company-name-is-spelled-correctly-as-ray-infotech-with-no-typos-or-character-errors-and-update-frontend-public-assets-generated-ray-infotech-logo-png-with-the-corrected-image",
+      "title": "Regenerate the Ray Infotech branded logo image ensuring the company name is spelled correctly as 'Ray Infotech' with no typos or character errors, and update frontend/public/assets/generated/ray-infotech-logo.png with the corrected image.",
+      "reqIds": [
+        "REQ-10"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Member registration with ₹2750 joining fee",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Matrix MLM structure with downlines in multiples of 3",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Refund joining fee on first successful matrix completion",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Commission structure: 9%, 8%, 7%... down to 1% per subsequent level",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Dashboard showing downline tree, earnings, and commission history",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Implement a backend data model and actor for member registration. Each member record must store: unique ID, name, contact info, sponsor/upline ID, joining fee payment status (paid/refunded), registration timestamp, and position in the matrix tree.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-7",
+      "summary": "Implement a 3-wide matrix MLM tree structure in the backend. Each node can have exactly 3 direct downlines (multiples of 3 per level). New members are placed in the next available slot in breadth-first order under their sponsor.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-8",
+      "summary": "Implement the joining fee refund logic in the backend: when a member's first level of 3 direct downlines is fully filled (3 referrals), automatically mark their joining fee as 'refunded' and record a ₹2750 credit transaction for that member.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-9",
+      "summary": "Implement a commission calculation system in the backend. After the joining fee is refunded (first level), each subsequent completed level earns a commission: Level 2 = 9%, Level 3 = 8%, Level 4 = 7%, continuing down by 1% per level until Level 10 = 1%. Commissions are calculated on the ₹2750 joining fee of each new member at that level. Record each commission as a transaction linked to the earning member.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "status": "pending"
+    }
+  ],
+  "gameProjectType": "none",
+  "projectName": "Ray Infotech MLM",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}

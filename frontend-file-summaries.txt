@@ -1,0 +1,18 @@
+{
+  "frontend/src/App.tsx": "Main application component with TanStack Router setup, defining routes for home, register, dashboard, and admin pages, wrapped in ThemeProvider with Layout, ProfileSetupModal, and Toaster.",
+  "frontend/src/hooks/useQueries.ts": "React Query hooks for all backend operations including user profile management, member registration, member lookup, listing members, downline queries, and admin fee management.",
+  "frontend/src/components/Layout.tsx": "Simple layout wrapper that composes Header and Footer around the main content area with flex column structure.",
+  "frontend/src/components/Header.tsx": "Sticky navigation header with a text-based \"Ray Infotech\" logo (Zap icon + bold gold text + \"Matrix MLM\" subtitle), responsive nav links, and login/logout button with gold-on-navy styling — no longer relies on a generated image file.",
+  "frontend/src/components/Footer.tsx": "Footer with copyright year, Ray Infotech attribution, and caffeine.ai UTM-tracked link with gold heart icon.",
+  "frontend/src/components/ProfileSetupModal.tsx": "Modal dialog that appears after login when no user profile exists, collecting name and contact info before allowing access to the platform.",
+  "frontend/src/pages/HomePage.tsx": "Landing page with a hero section featuring a styled text-based \"Ray Infotech\" logo mark (Zap icon + Poppins bold text), commission structure grid (10 levels), how-it-works cards, and CTA buttons using the navy/gold theme.",
+  "frontend/src/pages/RegisterPage.tsx": "Member registration page with validated form (name, mobile, email, sponsor ID), ₹2750 fee banner, and success state showing new member ID with copy functionality.",
+  "frontend/src/pages/DashboardPage.tsx": "Member dashboard with quick stats, member ID search/lookup, selected member details (info card, earnings summary, matrix tree, commission history), and all-members list.",
+  "frontend/src/pages/AdminPanel.tsx": "Admin-only panel with access control, platform statistics, searchable/paginated member table with refund status badges, and mark-fee-paid action.",
+  "frontend/src/components/MatrixTreeVisualization.tsx": "Recursive 3-wide matrix tree visualization showing up to 3 levels with member cards, empty slot indicators, refund status icons, and a legend.",
+  "frontend/src/components/EarningsSummary.tsx": "Earnings summary card showing total earnings, fee refund status/amount, and commission total with progress hint for unfilled downline slots.",
+  "frontend/src/components/CommissionHistoryTable.tsx": "Commission history table computing earnings from downline tree depth, showing type, level, rate, amount, source member, and date for each entry.",
+  "frontend/src/components/PlatformStatistics.tsx": "Platform-wide statistics grid showing total members, fees collected, refunds issued, and total commissions with colored cards and loading skeletons.",
+  "frontend/src/index.css": "Global CSS with OKLCH color system customized for Ray Infotech's navy/gold palette, Inter/Poppins font imports, and both light and dark mode tokens.",
+  "frontend/tailwind.config.js": "Extended Tailwind config with Ray Infotech navy and gold color palettes, Inter/Poppins font families, custom shadows, and all standard shadcn/ui tokens."
+}

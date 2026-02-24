@@ -1,0 +1,42 @@
+{
+  "kind": "build_request",
+  "title": "Fix Ray Infotech logo spelling/branding",
+  "projectName": "Ray Infotech",
+  "priority": "normal",
+  "requirements": [
+    {
+      "id": "REQ-10",
+      "text": "Regenerate the Ray Infotech branded logo image ensuring the company name is spelled correctly as 'Ray Infotech' with no typos or character errors, and update frontend/public/assets/generated/ray-infotech-logo.png with the corrected image.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-recent"
+        ],
+        "quotes": [
+          "Change logo with perfect spelling"
+        ]
+      },
+      "acceptanceCriteria": [
+        "The logo image displays the brand name as exactly 'Ray Infotech' with correct spelling",
+        "All characters in the logo text are clearly legible and correctly formed",
+        "The updated logo is rendered in the hero section of the HomePage at /assets/generated/ray-infotech-logo.png",
+        "The logo maintains the deep navy and gold color palette consistent with the existing theme"
+      ]
+    }
+  ],
+  "constraints": [
+    "Do not change the backend schema or any backend logic",
+    "Do not alter any immutable frontend paths (hooks, main.tsx, UI components)"
+  ],
+  "nonGoals": [
+    "Changing the logo design style or color palette",
+    "Modifying any other pages or components beyond the logo image",
+    "Adding new features or functionality"
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": [
+      "Fix the brand name text spelling so it reads exactly 'Ray Infotech' with correct lettering, maintaining the deep navy and gold professional style (ray-infotech-logo.png > ray-infotech-logo.dim_400x400.png)"
+    ]
+  }
+}

@@ -1,0 +1,115 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.75rem;
+
+    /* Ray Infotech Brand: Deep Navy + Gold */
+    --background: 0.97 0.005 240;
+    --foreground: 0.18 0.02 240;
+
+    --card: 1 0 0;
+    --card-foreground: 0.18 0.02 240;
+
+    --popover: 1 0 0;
+    --popover-foreground: 0.18 0.02 240;
+
+    --primary: 0.22 0.04 240;
+    --primary-foreground: 0.97 0.005 240;
+
+    --secondary: 0.93 0.01 240;
+    --secondary-foreground: 0.22 0.04 240;
+
+    --muted: 0.93 0.01 240;
+    --muted-foreground: 0.52 0.02 240;
+
+    --accent: 0.93 0.01 240;
+    --accent-foreground: 0.22 0.04 240;
+
+    --destructive: 0.577 0.245 27.325;
+    --destructive-foreground: 0.985 0 0;
+
+    --border: 0.88 0.01 240;
+    --input: 0.88 0.01 240;
+    --ring: 0.72 0.12 85;
+
+    --chart-1: 0.72 0.12 85;
+    --chart-2: 0.6 0.118 184.704;
+    --chart-3: 0.398 0.07 227.392;
+    --chart-4: 0.828 0.189 84.429;
+    --chart-5: 0.769 0.188 70.08;
+
+    --sidebar: 0.97 0.005 240;
+    --sidebar-foreground: 0.18 0.02 240;
+    --sidebar-primary: 0.22 0.04 240;
+    --sidebar-primary-foreground: 0.97 0.005 240;
+    --sidebar-accent: 0.93 0.01 240;
+    --sidebar-accent-foreground: 0.22 0.04 240;
+    --sidebar-border: 0.88 0.01 240;
+    --sidebar-ring: 0.72 0.12 85;
+  }
+
+  .dark {
+    --background: 0.14 0.025 240;
+    --foreground: 0.95 0.005 240;
+
+    --card: 0.19 0.03 240;
+    --card-foreground: 0.95 0.005 240;
+
+    --popover: 0.22 0.03 240;
+    --popover-foreground: 0.95 0.005 240;
+
+    --primary: 0.95 0.005 240;
+    --primary-foreground: 0.19 0.03 240;
+
+    --secondary: 0.25 0.03 240;
+    --secondary-foreground: 0.95 0.005 240;
+
+    --muted: 0.25 0.03 240;
+    --muted-foreground: 0.62 0.02 240;
+
+    --accent: 0.30 0.03 240;
+    --accent-foreground: 0.95 0.005 240;
+
+    --destructive: 0.704 0.191 22.216;
+    --destructive-foreground: 0.205 0 0;
+
+    --border: 1 0 0 / 10%;
+    --input: 1 0 0 / 15%;
+    --ring: 0.72 0.12 85;
+
+    --chart-1: 0.72 0.12 85;
+    --chart-2: 0.696 0.17 162.48;
+    --chart-3: 0.769 0.188 70.08;
+    --chart-4: 0.627 0.265 303.9;
+    --chart-5: 0.645 0.246 16.439;
+
+    --sidebar: 0.19 0.03 240;
+    --sidebar-foreground: 0.95 0.005 240;
+    --sidebar-primary: 0.72 0.12 85;
+    --sidebar-primary-foreground: 0.14 0.025 240;
+    --sidebar-accent: 0.25 0.03 240;
+    --sidebar-accent-foreground: 0.95 0.005 240;
+    --sidebar-border: 1 0 0 / 10%;
+    --sidebar-ring: 0.72 0.12 85;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Poppins', 'Inter', system-ui, sans-serif;
+  }
+}
