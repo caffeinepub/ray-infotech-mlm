@@ -1,17 +1,36 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-24T19:58:48.028Z",
-  "summary": "The diff implements all three requirements: REQ-11 (backend commission logic with 9%→1% descending rates applied to total collection per level), REQ-12 (CommissionHistoryTable.tsx and EarningsSummary.tsx updated with corrected rate array and total-collection-based calculation), and REQ-13 (HomePage.tsx updated with exactly 9 commission levels showing 9% down to 1% with total collection descriptions). All acceptance criteria appear to be satisfied based on the diff evidence.",
-  "missing_requirements": [],
-  "hallucinated_features": [],
-  "confidence": 0.88,
+  "generatedAt": "2026-02-25T19:47:33.887Z",
+  "summary": "The diff implements all three requirements: REQ-1 (backend RI-format unique member ID generation), REQ-2 (updated RegisterPage with validated form and success display), and REQ-3 (AdminPanel member ID column and React Query cache invalidation). Most acceptance criteria are met. One minor concern is the React Query cache invalidation after registration — the diff summary mentions it but does not show explicit invalidation code in useQueries.ts. However, the frontend-file-summaries.txt describes useRegisterMember as using React Query mutations, which typically include invalidation. Overall coverage is strong.",
+  "missing_requirements": [
+    {
+      "id": "REQ-3",
+      "requirement": "The admin panel React Query cache is invalidated after a new member is registered so the list reflects the latest data.",
+      "reason": "The diff does not show the useQueries.ts content in detail (only a summary description), so there is no direct evidence that the useRegisterMember mutation explicitly calls queryClient.invalidateQueries for the members list after a successful registration. The file summary describes the hook but does not confirm cache invalidation logic.",
+      "evidence": [
+        "frontend/src/hooks/useQueries.ts",
+        "frontend-file-summaries.txt"
+      ]
+    }
+  ],
+  "hallucinated_features": [
+    {
+      "description": "A migration module (backend/migration.mo) was added to migrate existing member records to include the new memberIdStr field.",
+      "reason": "The build request only asked to update registration logic to generate and store RI-format IDs. It did not request a migration module for existing data. While this is a reasonable implementation choice, it was not part of the specified requirements.",
+      "evidence": [
+        "backend/migration.mo"
+      ]
+    }
+  ],
+  "confidence": 0.78,
   "changed_files": [
     "backend/main.mo",
+    "backend/migration.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/components/CommissionHistoryTable.tsx",
-    "frontend/src/components/EarningsSummary.tsx",
-    "frontend/src/pages/HomePage.tsx",
+    "frontend/src/components/MatrixTreeVisualization.tsx",
+    "frontend/src/pages/AdminPanel.tsx",
+    "frontend/src/pages/RegisterPage.tsx",
     "project_state.json"
   ]
 }

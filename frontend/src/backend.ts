@@ -95,14 +95,21 @@ export interface MemberRegistration {
     sponsorId?: MemberId;
 }
 export type Time = bigint;
+export interface MemberRegistrationResult {
+    id: MemberId;
+    memberId: string;
+}
 export interface MemberPublic {
     id: bigint;
+    isCancelled: boolean;
     contactInfo: string;
     name: string;
     sponsorId?: bigint;
+    membershipDeadline: Time;
     feeRefunded: boolean;
     directDownlines: Array<MemberId>;
     registrationTimestamp: Time;
+    memberIdStr: string;
     joiningFeePaid: boolean;
     matrixPosition: MLMTreePosition;
 }
@@ -125,6 +132,7 @@ export enum UserRole {
 export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    checkMembershipStatuses(): Promise<void>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getMember(id: MemberId): Promise<MemberPublic | null>;
@@ -133,7 +141,7 @@ export interface backendInterface {
     isCallerAdmin(): Promise<boolean>;
     listMembersByName(): Promise<Array<MemberPublic>>;
     markJoiningFeePaid(memberId: MemberId): Promise<void>;
-    registerMember(registration: MemberRegistration): Promise<MemberId>;
+    registerMember(registration: MemberRegistration): Promise<MemberRegistrationResult>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
 }
 import type { MLMTreePosition as _MLMTreePosition, MemberId as _MemberId, MemberPublic as _MemberPublic, MemberRegistration as _MemberRegistration, Time as _Time, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
@@ -164,6 +172,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n1(this._uploadFile, this._downloadFile, arg1));
+            return result;
+        }
+    }
+    async checkMembershipStatuses(): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.checkMembershipStatuses();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.checkMembershipStatuses();
             return result;
         }
     }
@@ -279,7 +301,7 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async registerMember(arg0: MemberRegistration): Promise<MemberId> {
+    async registerMember(arg0: MemberRegistration): Promise<MemberRegistrationResult> {
         if (this.processError) {
             try {
                 const result = await this.actor.registerMember(to_candid_MemberRegistration_n11(this._uploadFile, this._downloadFile, arg0));
@@ -325,33 +347,42 @@ function from_candid_opt_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Ar
 }
 function from_candid_record_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     id: bigint;
+    isCancelled: boolean;
     contactInfo: string;
     name: string;
     sponsorId: [] | [bigint];
+    membershipDeadline: _Time;
     feeRefunded: boolean;
     directDownlines: Array<_MemberId>;
     registrationTimestamp: _Time;
+    memberIdStr: string;
     joiningFeePaid: boolean;
     matrixPosition: _MLMTreePosition;
 }): {
     id: bigint;
+    isCancelled: boolean;
     contactInfo: string;
     name: string;
     sponsorId?: bigint;
+    membershipDeadline: Time;
     feeRefunded: boolean;
     directDownlines: Array<MemberId>;
     registrationTimestamp: Time;
+    memberIdStr: string;
     joiningFeePaid: boolean;
     matrixPosition: MLMTreePosition;
 } {
     return {
         id: value.id,
+        isCancelled: value.isCancelled,
         contactInfo: value.contactInfo,
         name: value.name,
         sponsorId: record_opt_to_undefined(from_candid_opt_n9(_uploadFile, _downloadFile, value.sponsorId)),
+        membershipDeadline: value.membershipDeadline,
         feeRefunded: value.feeRefunded,
         directDownlines: value.directDownlines,
         registrationTimestamp: value.registrationTimestamp,
+        memberIdStr: value.memberIdStr,
         joiningFeePaid: value.joiningFeePaid,
         matrixPosition: value.matrixPosition
     };

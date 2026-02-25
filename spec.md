@@ -1,12 +1,13 @@
 # Specification
 
 ## Summary
-**Goal:** Correct the multi-level commission structure so each level earns a descending percentage (9% down to 1%) of the total collection at that level.
+**Goal:** Add a Member Joining Form with unique RI-format member ID generation and integrate new members into the Admin Dashboard automatically.
 
 **Planned changes:**
-- Update backend commission calculation to use rates [9, 8, 7, 6, 5, 4, 3, 2, 1]% for levels 1–9, where commission = rate × (members at level × ₹2750)
-- Update `CommissionHistoryTable.tsx` to use the corrected rate array and display commission as a percentage of total collection per level
-- Update `EarningsSummary.tsx` to calculate totals using the corrected rate array
-- Update the HomePage commission level breakdown section to display Level 1 = 9% through Level 9 = 1%, each described as a percentage of total collection at that level
+- Update backend registration logic to generate a unique sequential member ID in the format `RI XXXXXXXXX` (e.g., `RI 001920001`) and store it in the member record
+- Create/update the Member Joining Form page with fields for name, mobile number, email, and optional sponsor ID, with field validation
+- Display the newly generated unique member ID prominently to the user upon successful registration
+- Add the RI-format member ID as a column in the Admin Dashboard member list table
+- Invalidate the React Query cache after a new member registers so the admin panel reflects the latest data without a manual refresh
 
-**User-visible outcome:** Commission amounts shown throughout the app (history table, earnings summary, and homepage breakdown) will correctly reflect 9% at level 1 down to 1% at level 9, calculated on total collection per level.
+**User-visible outcome:** Users can fill out a Member Joining Form and immediately receive their unique RI-format member ID. Admins will see newly registered members (including their RI IDs) appear in the dashboard automatically.

@@ -1,43 +1,53 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Correct commission structure to 9% down to 1% of total collection per level",
+  "title": "Member Joining Form with Admin Dashboard Integration and Unique Member ID",
   "requirements": [
     {
-      "id": "REQ-12",
-      "summary": "Update commission history table and earnings summary to use corrected commission rates (9% down to 1%) applied to total collection per level",
+      "id": "REQ-2",
+      "summary": "Create a Member Joining Form that collects registration details and displays the newly generated unique member ID (RI format) upon successful submission",
       "acceptanceCriteria": [
-        "CommissionHistoryTable uses the rate array [9, 8, 7, 6, 5, 4, 3, 2, 1] for levels 1–9",
-        "EarningsSummary calculates totals using the same corrected rate array",
-        "Commission amounts shown per level reflect percentage of total collection, not individual joining fee",
-        "HomePage commission level breakdown section displays the corrected rates (9% down to 1%)"
+        "The joining form displays input fields for name, mobile, email, and optional sponsor ID.",
+        "Validation errors are shown for missing or invalid required fields.",
+        "On successful registration, the new unique member ID is displayed prominently to the user.",
+        "The form is accessible via the app navigation."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/CommissionHistoryTable.tsx",
+          "path": "frontend/src/pages/RegisterPage.tsx",
           "operation": "modify",
-          "description": "Replace the current commission rate calculation logic with the corrected 9-level descending rate array [9, 8, 7, 6, 5, 4, 3, 2, 1] (in percent). Update the commission calculation to apply each rate as a percentage of the total collection at that level (number of members at the level × ₹2750), rather than as a per-member fee. Ensure the table displays commission amounts that reflect this corrected calculation for levels 1 through 9."
+          "description": "Update the RegisterPage to display the newly generated unique member ID (from MemberRegistrationResult.memberIdStr) in the RI format prominently after successful registration. Show the ID in a success card or modal with clear formatting. Ensure the form validates all required fields (name, mobile, email) before submission and displays validation errors inline. The form already collects name, mobile, email, and optional sponsor ID per the existing structure."
         },
         {
-          "path": "frontend/src/components/EarningsSummary.tsx",
+          "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Update the earnings calculation logic to use the corrected commission rate array [9, 8, 7, 6, 5, 4, 3, 2, 1] for levels 1–9. Ensure the total earnings calculation applies each percentage rate to the total collection at that level (count of members × ₹2750), not as a flat per-member amount. The summary should display accurate totals reflecting the corrected commission structure."
+          "description": "Verify the useRegisterMember mutation returns MemberRegistrationResult containing both id and memberIdStr fields. Ensure the mutation properly exposes the memberIdStr field (the RI-formatted ID) to consuming components. Update type definitions if necessary to reflect the backend interface signature."
         }
       ]
     },
     {
-      "id": "REQ-13",
-      "summary": "Update HomePage commission level breakdown to display corrected rates (9% down to 1%) as percentages of total collection",
+      "id": "REQ-3",
+      "summary": "Ensure newly registered members appear immediately in the Admin Dashboard member list with their unique RI-format member ID displayed as a column",
       "acceptanceCriteria": [
-        "HomePage lists exactly 9 commission levels",
-        "Level 1 shows 9%, Level 2 shows 8%, ..., Level 9 shows 1%",
-        "Each level description states the rate is applied on total collection at that level"
+        "A newly registered member appears in the admin panel member list upon their next load or after triggering a refresh.",
+        "The admin member table includes a column showing each member's unique RI-format ID.",
+        "The admin panel React Query cache is invalidated after a new member is registered so the list reflects the latest data."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/HomePage.tsx",
+          "path": "frontend/src/pages/AdminPanel.tsx",
           "operation": "modify",
-          "description": "Update the commission level breakdown section to display exactly 9 levels with the corrected descending commission rates: Level 1 = 9%, Level 2 = 8%, Level 3 = 7%, Level 4 = 6%, Level 5 = 5%, Level 6 = 4%, Level 7 = 3%, Level 8 = 2%, Level 9 = 1%. Each level description must clearly state that the percentage is applied to the total collection at that level (number of members at level × ₹2750). Remove any reference to commission levels beyond Level 9 if present."
+          "description": "Add a new column to the admin member table displaying the memberIdStr field (the RI-formatted unique member ID) for each member. Position this column early in the table (e.g., after the row number or as the first data column) so it is prominently visible. Update the table headers and cell rendering logic to include this new column. Ensure the column is searchable/sortable if those features exist."
+        },
+        {
+          "path": "frontend/src/pages/RegisterPage.tsx",
+          "operation": "modify",
+          "description": "After successful member registration via useRegisterMember mutation, invalidate the React Query cache for the 'members' query key (used by AdminPanel to list all members) so that the admin panel reflects the newly registered member immediately upon next load. Use queryClient.invalidateQueries(['members']) in the onSuccess callback of the mutation."
+        },
+        {
+          "path": "frontend/src/components/Header.tsx",
+          "operation": "modify",
+          "description": "Ensure the 'Register Member' navigation link is visible and accessible to users with appropriate roles (admin or authenticated users). Verify the link correctly routes to the RegisterPage so users can access the joining form via app navigation."
         }
       ]
     }

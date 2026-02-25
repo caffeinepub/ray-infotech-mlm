@@ -18,12 +18,15 @@ export interface MLMTreePosition {
 export type MemberId = bigint;
 export interface MemberPublic {
   'id' : bigint,
+  'isCancelled' : boolean,
   'contactInfo' : string,
   'name' : string,
   'sponsorId' : [] | [bigint],
+  'membershipDeadline' : Time,
   'feeRefunded' : boolean,
   'directDownlines' : Array<MemberId>,
   'registrationTimestamp' : Time,
+  'memberIdStr' : string,
   'joiningFeePaid' : boolean,
   'matrixPosition' : MLMTreePosition,
 }
@@ -31,6 +34,10 @@ export interface MemberRegistration {
   'contactInfo' : string,
   'name' : string,
   'sponsorId' : [] | [MemberId],
+}
+export interface MemberRegistrationResult {
+  'id' : MemberId,
+  'memberId' : string,
 }
 export type Time = bigint;
 export type TreeLevel = bigint;
@@ -41,6 +48,7 @@ export type UserRole = { 'admin' : null } |
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'checkMembershipStatuses' : ActorMethod<[], undefined>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getMember' : ActorMethod<[MemberId], [] | [MemberPublic]>,
@@ -49,7 +57,10 @@ export interface _SERVICE {
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'listMembersByName' : ActorMethod<[], Array<MemberPublic>>,
   'markJoiningFeePaid' : ActorMethod<[MemberId], undefined>,
-  'registerMember' : ActorMethod<[MemberRegistration], MemberId>,
+  'registerMember' : ActorMethod<
+    [MemberRegistration],
+    MemberRegistrationResult
+  >,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;

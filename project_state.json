@@ -1,76 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 9,
-  "summary": "MLM web app for Ray Infotech institute. Members pay ₹2750 joining fee and recruit downlines in multiples of 3. On first successful matrix completion, the joining fee is refunded. Subsequent levels earn commissions: 9%, 8%, 7%... down to 1% — each percentage calculated on the total collection (sum of all ₹2750 joining fees at that level).",
+  "projectStateVersion": 3,
+  "summary": "A membership management web app with a member joining form, admin dashboard integration, and unique member ID generation (e.g., RI 001920001).",
   "architectural_notes": [
-    "Institute name: Ray Infotech",
-    "MLM type: Matrix with 3-wide downline (each member recruits 3)",
-    "Commission basis: each level's commission % (9% down to 1%) is applied to total collection (all ₹2750 fees collected at that level), not per-member fee"
+    "Unique member IDs follow the format RI XXXXXXXXX (e.g., RI 001920001)"
   ],
   "known_issues": [],
-  "isFixRequest": true,
+  "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-build-a-member-registration-page-with-a-form-collecting-name-mobile-number-email-and-sponsor-referral-code-display-the-joining-fee-of-2750-clearly-on-successful-submission-show-the-member-their-unique-referral-member-id",
-      "title": "Build a member registration page with a form collecting name, mobile number, email, and sponsor referral code. Display the joining fee of ₹2750 clearly. On successful submission, show the member their unique referral/member ID.",
+      "id": "feature-create-a-dedicated-member-joining-form-page-or-update-the-existing-registerpage-that-collects-name-mobile-number-email-and-optional-sponsor-id-on-successful-submission-display-the-newly-generated-unique-member-id-e-g-ri-001920001-to-the-user-the-form-must-validate-all-required-fields-before-submission",
+      "title": "Create a dedicated Member Joining Form page (or update the existing RegisterPage) that collects name, mobile number, email, and optional sponsor ID. On successful submission, display the newly generated unique member ID (e.g., RI 001920001) to the user. The form must validate all required fields before submission.",
       "reqIds": [
-        "REQ-5"
+        "REQ-2"
       ],
       "version": 1
     },
     {
-      "id": "feature-build-a-member-dashboard-page-showing-current-matrix-status-downline-tree-visualization-3-wide-per-level-total-earnings-refund-status-of-the-joining-fee-and-a-commission-history-table-listing-each-commission-transaction-with-level-amount-and-date",
-      "title": "Build a member dashboard page showing: current matrix status, downline tree visualization (3-wide per level), total earnings, refund status of the joining fee, and a commission history table listing each commission transaction with level, amount, and date.",
+      "id": "feature-ensure-that-upon-successful-member-registration-the-new-member-is-immediately-visible-in-the-admin-dashboard-adminpanel-member-list-without-requiring-a-manual-refresh-the-admin-table-must-display-the-newly-generated-unique-member-id-ri-format-as-a-column",
+      "title": "Ensure that upon successful member registration, the new member is immediately visible in the Admin Dashboard (AdminPanel) member list without requiring a manual refresh. The admin table must display the newly generated unique member ID (RI format) as a column.",
       "reqIds": [
-        "REQ-6"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-build-an-admin-panel-page-listing-all-registered-members-their-matrix-positions-payment-refund-status-total-commissions-earned-and-overall-platform-statistics-total-members-total-commissions-paid-total-fees-collected",
-      "title": "Build an admin panel page listing all registered members, their matrix positions, payment/refund status, total commissions earned, and overall platform statistics (total members, total commissions paid, total fees collected).",
-      "reqIds": [
-        "REQ-7"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-apply-a-professional-trustworthy-visual-theme-for-ray-infotech-use-a-deep-navy-and-gold-color-palette-with-clean-sans-serif-typography-card-based-layouts-and-subtle-gradients-the-brand-name-ray-infotech-should-appear-prominently-in-the-header-navbar-across-all-pages",
-      "title": "Apply a professional, trustworthy visual theme for Ray Infotech: use a deep navy and gold color palette with clean sans-serif typography, card-based layouts, and subtle gradients. The brand name 'Ray Infotech' should appear prominently in the header/navbar across all pages.",
-      "reqIds": [
-        "REQ-8"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-replace-the-image-element-at-xpath-html-1-body-1-div-1-div-1-main-1-div-1-section-1-div-3-div-1-div-1-img-1-the-hero-section-logo-image-on-the-homepage-with-the-generated-ray-infotech-branded-logo-image-stored-at-frontend-public-assets-generated-ray-infotech-logo-png-render-it-using-an-img-tag-pointing-to-assets-generated-ray-infotech-logo-png-with-appropriate-alt-text-ray-infotech-logo",
-      "title": "Replace the image element at XPath /html[1]/body[1]/div[1]/div[1]/main[1]/div[1]/section[1]/div[3]/div[1]/div[1]/img[1] (the hero section logo/image on the HomePage) with the generated Ray Infotech branded logo image stored at frontend/public/assets/generated/ray-infotech-logo.png. Render it using an <img> tag pointing to /assets/generated/ray-infotech-logo.png with appropriate alt text 'Ray Infotech Logo'.",
-      "reqIds": [
-        "REQ-9"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-regenerate-the-ray-infotech-branded-logo-image-ensuring-the-company-name-is-spelled-correctly-as-ray-infotech-with-no-typos-or-character-errors-and-update-frontend-public-assets-generated-ray-infotech-logo-png-with-the-corrected-image",
-      "title": "Regenerate the Ray Infotech branded logo image ensuring the company name is spelled correctly as 'Ray Infotech' with no typos or character errors, and update frontend/public/assets/generated/ray-infotech-logo.png with the corrected image.",
-      "reqIds": [
-        "REQ-10"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-the-frontend-commission-history-table-commissionhistorytable-tsx-and-earnings-summary-earningssummary-tsx-to-reflect-the-corrected-commission-rate-array-9-8-7-6-5-4-3-2-1-percent-for-levels-1-through-9-ensure-per-level-commission-amounts-displayed-to-the-user-are-computed-as-the-applicable-percentage-of-the-total-collection-at-that-level-number-of-members-at-the-level-2750-not-as-a-flat-per-member-fee",
-      "title": "Update the frontend commission history table (CommissionHistoryTable.tsx) and earnings summary (EarningsSummary.tsx) to reflect the corrected commission rate array: [9, 8, 7, 6, 5, 4, 3, 2, 1] percent for levels 1 through 9. Ensure per-level commission amounts displayed to the user are computed as the applicable percentage of the total collection at that level (number of members at the level × ₹2750), not as a flat per-member fee.",
-      "reqIds": [
-        "REQ-12"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-the-homepage-commission-level-breakdown-section-to-display-the-corrected-commission-rates-level-1-9-level-2-8-level-3-7-continuing-down-to-level-9-1-each-described-as-a-percentage-of-total-collection-at-that-level",
-      "title": "Update the HomePage commission level breakdown section to display the corrected commission rates: Level 1 = 9%, Level 2 = 8%, Level 3 = 7%, continuing down to Level 9 = 1%, each described as a percentage of total collection at that level.",
-      "reqIds": [
-        "REQ-13"
+        "REQ-3"
       ],
       "version": 1
     }
@@ -78,63 +28,27 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Member registration with ₹2750 joining fee",
+      "summary": "Create a member joining form",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-2",
-      "summary": "Matrix MLM structure with downlines in multiples of 3",
+      "summary": "Automatically add new members to the admin dashboard upon joining",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-3",
-      "summary": "Refund joining fee on first successful matrix completion",
+      "summary": "Generate a unique member ID for each new member (e.g., RI 001920001)",
       "reqIds": [],
       "status": "pending"
     },
     {
-      "id": "AR-5",
-      "summary": "Dashboard showing downline tree, earnings, and commission history",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-6",
-      "summary": "Implement a backend data model and actor for member registration. Each member record must store: unique ID, name, contact info, sponsor/upline ID, joining fee payment status (paid/refunded), registration timestamp, and position in the matrix tree.",
+      "id": "AR-4",
+      "summary": "Update the backend member registration logic to generate a unique member ID in the format 'RI' followed by a zero-padded 9-digit sequential number (e.g., RI 001920001). Store this formatted ID as part of the member record and return it upon successful registration.",
       "reqIds": [
         "REQ-1"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-7",
-      "summary": "Implement a 3-wide matrix MLM tree structure in the backend. Each node can have exactly 3 direct downlines (multiples of 3 per level). New members are placed in the next available slot in breadth-first order under their sponsor.",
-      "reqIds": [
-        "REQ-2"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-8",
-      "summary": "Implement the joining fee refund logic in the backend: when a member's first level of 3 direct downlines is fully filled (3 referrals), automatically mark their joining fee as 'refunded' and record a ₹2750 credit transaction for that member.",
-      "reqIds": [
-        "REQ-3"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-10",
-      "summary": "Correct commission structure: each level commission (9%, 8%, 7%... down to 1%) is calculated on the total collection at that level (sum of all ₹2750 joining fees from all members at that level), not per individual member fee.",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-11",
-      "summary": "Update the backend commission calculation logic so that each successive matrix level earns a decreasing commission rate applied to the total collection at that level: Level 1 = 9%, Level 2 = 8%, Level 3 = 7%, Level 4 = 6%, Level 5 = 5%, Level 6 = 4%, Level 7 = 3%, Level 8 = 2%, Level 9 = 1%. Total collection at a given level equals the number of members at that level multiplied by the ₹2750 joining fee. Remove or replace any previously implemented commission rate array with this corrected 9-level descending structure.",
-      "reqIds": [
-        "REQ-11"
       ],
       "status": "pending"
     }

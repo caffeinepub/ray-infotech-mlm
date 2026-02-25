@@ -1,90 +1,75 @@
 {
   "kind": "build_request",
-  "title": "Correct commission structure to 9% down to 1% of total collection per level",
-  "projectName": "Ray Infotech",
+  "title": "Member Joining Form with Admin Dashboard Integration and Unique Member ID",
+  "projectName": "Ray Infotech MLM",
   "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-11",
-      "text": "Update the backend commission calculation logic so that each successive matrix level earns a decreasing commission rate applied to the total collection at that level: Level 1 = 9%, Level 2 = 8%, Level 3 = 7%, Level 4 = 6%, Level 5 = 5%, Level 6 = 4%, Level 7 = 3%, Level 8 = 2%, Level 9 = 1%. Total collection at a given level equals the number of members at that level multiplied by the ₹2750 joining fee. Remove or replace any previously implemented commission rate array with this corrected 9-level descending structure.",
+      "id": "REQ-1",
+      "text": "Update the backend member registration logic to generate a unique member ID in the format 'RI' followed by a zero-padded 9-digit sequential number (e.g., RI 001920001). Store this formatted ID as part of the member record and return it upon successful registration.",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-6"
         ],
         "quotes": [
-          "Correct the Comission structure",
-          "9% of total collection",
-          "8% of total collection",
-          "7% of total collection",
-          "So on upto 1%"
+          "Create unique id such as RI 001920001"
         ]
       },
       "acceptanceCriteria": [
-        "Level 1 commission = 9% × (count of members at level 1 × ₹2750)",
-        "Level 2 commission = 8% × (count of members at level 2 × ₹2750)",
-        "Level 3 commission = 7% × (count of members at level 3 × ₹2750)",
-        "The pattern continues decreasing by 1% per level down to Level 9 = 1%",
-        "No commission is applied beyond Level 9",
-        "Commission rates are applied to the total collection at that level, not per-individual fee"
+        "Each newly registered member receives a unique ID in the format 'RI XXXXXXXXX' where X is a zero-padded 9-digit number.",
+        "IDs are sequential and do not repeat.",
+        "The unique ID is stored in the member record and retrievable via the backend."
       ]
     },
     {
-      "id": "REQ-12",
-      "text": "Update the frontend commission history table (CommissionHistoryTable.tsx) and earnings summary (EarningsSummary.tsx) to reflect the corrected commission rate array: [9, 8, 7, 6, 5, 4, 3, 2, 1] percent for levels 1 through 9. Ensure per-level commission amounts displayed to the user are computed as the applicable percentage of the total collection at that level (number of members at the level × ₹2750), not as a flat per-member fee.",
+      "id": "REQ-2",
+      "text": "Create a dedicated Member Joining Form page (or update the existing RegisterPage) that collects name, mobile number, email, and optional sponsor ID. On successful submission, display the newly generated unique member ID (e.g., RI 001920001) to the user. The form must validate all required fields before submission.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-6"
         ],
         "quotes": [
-          "Correct the Comission structure",
-          "9% of total collection",
-          "8% of total collection",
-          "7% of total collection",
-          "So on upto 1%"
+          "Create member joining form",
+          "Create unique id such as RI 001920001"
         ]
       },
       "acceptanceCriteria": [
-        "CommissionHistoryTable uses the rate array [9, 8, 7, 6, 5, 4, 3, 2, 1] for levels 1–9",
-        "EarningsSummary calculates totals using the same corrected rate array",
-        "Commission amounts shown per level reflect percentage of total collection, not individual joining fee",
-        "HomePage commission level breakdown section displays the corrected rates (9% down to 1%)"
+        "The joining form displays input fields for name, mobile, email, and optional sponsor ID.",
+        "Validation errors are shown for missing or invalid required fields.",
+        "On successful registration, the new unique member ID is displayed prominently to the user.",
+        "The form is accessible via the app navigation."
       ]
     },
     {
-      "id": "REQ-13",
-      "text": "Update the HomePage commission level breakdown section to display the corrected commission rates: Level 1 = 9%, Level 2 = 8%, Level 3 = 7%, continuing down to Level 9 = 1%, each described as a percentage of total collection at that level.",
-      "target": "frontend",
+      "id": "REQ-3",
+      "text": "Ensure that upon successful member registration, the new member is immediately visible in the Admin Dashboard (AdminPanel) member list without requiring a manual refresh. The admin table must display the newly generated unique member ID (RI format) as a column.",
+      "target": "both",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-6"
         ],
         "quotes": [
-          "9% of total collection",
-          "8% of total collection",
-          "7% of total collection",
-          "So on upto 1%"
+          "After joining automatically add to admin dashboard"
         ]
       },
       "acceptanceCriteria": [
-        "HomePage lists exactly 9 commission levels",
-        "Level 1 shows 9%, Level 2 shows 8%, ..., Level 9 shows 1%",
-        "Each level description states the rate is applied on total collection at that level"
+        "A newly registered member appears in the admin panel member list upon their next load or after triggering a refresh.",
+        "The admin member table includes a column showing each member's unique RI-format ID.",
+        "The admin panel React Query cache is invalidated after a new member is registered so the list reflects the latest data."
       ]
     }
   ],
   "constraints": [
-    "Do not alter the joining fee amount of ₹2750",
-    "Do not change the 3-wide matrix tree structure",
-    "Do not modify files listed in frontend.immutablePaths",
-    "Commission rates must strictly follow the descending sequence 9%, 8%, 7%, 6%, 5%, 4%, 3%, 2%, 1% — no deviations"
+    "All backend logic must remain in the single Motoko actor at backend/main.mo.",
+    "Do not modify files under frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui.",
+    "The unique member ID format must follow 'RI' prefix with a zero-padded 9-digit number."
   ],
   "nonGoals": [
-    "Adding new commission levels beyond Level 9",
-    "Changing the refund logic for Level 0 (joining fee refund on first 3 direct downlines)",
-    "Modifying member registration or matrix placement logic",
-    "Changing authentication or admin panel access control"
+    "Changing the existing commission or matrix tree logic.",
+    "Adding payment processing to the joining form.",
+    "Modifying the recruitment deadline or auto-cancellation features."
   ],
   "imageRequirements": {
     "required": [],

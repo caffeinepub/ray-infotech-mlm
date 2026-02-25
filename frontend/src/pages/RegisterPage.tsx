@@ -8,7 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { UserPlus, IndianRupee, CheckCircle, Copy, LogIn } from 'lucide-react';
+import { UserPlus, IndianRupee, CheckCircle, Copy, LogIn, IdCard } from 'lucide-react';
+
+interface RegistrationSuccess {
+  numericId: bigint;
+  memberIdStr: string;
+  name: string;
+}
 
 export default function RegisterPage() {
   const { identity, login, loginStatus } = useInternetIdentity();
@@ -19,7 +25,7 @@ export default function RegisterPage() {
   const [mobile, setMobile] = useState('');
   const [email, setEmail] = useState('');
   const [sponsorId, setSponsorId] = useState('');
-  const [newMemberId, setNewMemberId] = useState<bigint | null>(null);
+  const [successData, setSuccessData] = useState<RegistrationSuccess | null>(null);
 
   const isAuthenticated = !!identity;
   const isLoggingIn = loginStatus === 'logging-in';
@@ -50,14 +56,19 @@ export default function RegisterPage() {
 
     const contactInfo = `Mobile: ${mobile.trim()} | Email: ${email.trim()}`;
     const parsedSponsorId = sponsorId.trim() ? BigInt(sponsorId.trim()) : undefined;
+    const submittedName = name.trim();
 
     try {
-      const memberId = await registerMember.mutateAsync({
-        name: name.trim(),
+      const result = await registerMember.mutateAsync({
+        name: submittedName,
         contactInfo,
         sponsorId: parsedSponsorId,
       });
-      setNewMemberId(memberId);
+      setSuccessData({
+        numericId: result.id,
+        memberIdStr: result.memberId,
+        name: submittedName,
+      });
       toast.success('Member registered successfully!');
     } catch (err: unknown) {
       const error = err as Error;
@@ -82,7 +93,7 @@ export default function RegisterPage() {
     setMobile('');
     setEmail('');
     setSponsorId('');
-    setNewMemberId(null);
+    setSuccessData(null);
   };
 
   if (!isAuthenticated) {
@@ -108,7 +119,7 @@ export default function RegisterPage() {
     );
   }
 
-  if (newMemberId !== null) {
+  if (successData !== null) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center px-4 py-12">
         <Card className="bg-card border-border max-w-md w-full">
@@ -116,19 +127,48 @@ export default function RegisterPage() {
             <div className="w-16 h-16 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="text-emerald-400" size={32} />
             </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">Registration Successful!</h2>
-            <p className="text-muted-foreground mb-6">The member has been registered in the Ray Infotech matrix.</p>
+            <h2 className="text-2xl font-bold text-foreground mb-1">Registration Successful!</h2>
+            <p className="text-muted-foreground mb-6">
+              <span className="font-semibold text-foreground">{successData.name}</span> has been registered in the Ray Infotech matrix.
+            </p>
 
+            {/* Unique Member ID — prominent display */}
+            <div className="bg-navy-900/60 border border-gold-500/40 rounded-2xl p-5 mb-4">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <IdCard size={16} className="text-gold-400" />
+                <span className="text-xs font-semibold text-gold-400 uppercase tracking-widest">Unique Member ID</span>
+              </div>
+              <div className="flex items-center justify-center gap-3">
+                <span className="text-4xl font-extrabold text-gold-400 tracking-wider font-mono">
+                  {successData.memberIdStr}
+                </span>
+                <button
+                  onClick={() => handleCopy(successData.memberIdStr)}
+                  className="text-muted-foreground hover:text-gold-400 transition-colors p-1 rounded"
+                  title="Copy Member ID"
+                >
+                  <Copy size={20} />
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Share this ID with the member — it is their permanent reference number.
+              </p>
+            </div>
+
+            {/* Secondary info */}
             <div className="bg-muted rounded-xl p-4 mb-6 space-y-3">
               <div>
-                <div className="text-xs text-muted-foreground mb-1">Member ID / Referral Code</div>
+                <div className="text-xs text-muted-foreground mb-1">Numeric ID (for sponsor field)</div>
                 <div className="flex items-center justify-center gap-2">
-                  <span className="text-3xl font-bold text-gold-400">{newMemberId.toString()}</span>
+                  <span className="text-lg font-bold text-foreground font-mono">
+                    #{successData.numericId.toString()}
+                  </span>
                   <button
-                    onClick={() => handleCopy(newMemberId.toString())}
+                    onClick={() => handleCopy(successData.numericId.toString())}
                     className="text-muted-foreground hover:text-gold-400 transition-colors"
+                    title="Copy numeric ID"
                   >
-                    <Copy size={18} />
+                    <Copy size={15} />
                   </button>
                 </div>
               </div>
@@ -243,7 +283,7 @@ export default function RegisterPage() {
                 id="sponsorId"
                 value={sponsorId}
                 onChange={(e) => setSponsorId(e.target.value.replace(/\D/g, ''))}
-                placeholder="Enter sponsor's member ID"
+                placeholder="Enter sponsor's numeric member ID"
                 className="bg-background border-border focus:border-gold-500"
               />
               <p className="text-xs text-muted-foreground">Leave blank if this is the first/root member</p>

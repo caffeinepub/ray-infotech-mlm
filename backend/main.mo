@@ -1,13 +1,18 @@
 import Map "mo:core/Map";
 import Runtime "mo:core/Runtime";
-import Text "mo:core/Text";
-import Nat "mo:core/Nat";
-import Time "mo:core/Time";
 import List "mo:core/List";
+import Text "mo:core/Text";
+import Time "mo:core/Time";
 import Principal "mo:core/Principal";
+import Iter "mo:core/Iter";
+import Nat "mo:core/Nat";
+import Migration "migration";
+
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
+// Automatically run migration if data structure changes between versions
+(with migration = Migration.run)
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -58,6 +63,7 @@ actor {
 
   type Member = {
     id : MemberId;
+    memberIdStr : Text; // Store string formatted id
     name : Text;
     contactInfo : Text;
     sponsorId : ?MemberId;
@@ -67,10 +73,13 @@ actor {
     matrixPosition : MLMTreePosition;
     commissions : [Commission];
     directDownlines : [MemberId];
+    membershipDeadline : Time.Time;
+    isCancelled : Bool;
   };
 
   public type MemberPublic = {
     id : Nat;
+    memberIdStr : Text; // Add string id to query result
     name : Text;
     contactInfo : Text;
     sponsorId : ?Nat;
@@ -79,6 +88,8 @@ actor {
     registrationTimestamp : Time.Time;
     matrixPosition : MLMTreePosition;
     directDownlines : [MemberId];
+    membershipDeadline : Time.Time;
+    isCancelled : Bool;
   };
 
   public type MemberRegistration = {
@@ -87,10 +98,35 @@ actor {
     sponsorId : ?MemberId;
   };
 
+  public type MemberRegistrationResult = {
+    id : MemberId;
+    memberId : Text;
+  };
+
   let members = Map.empty<MemberId, Member>();
   var nextMemberId = 1;
 
-  public shared ({ caller }) func registerMember(registration : MemberRegistration) : async MemberId {
+  let threeDaysInNanoseconds = 3 * 24 * 60 * 60 * 1_000_000_000;
+
+  func formatMemberId(id : Nat) : Text {
+    let numStr = id.toText();
+    let paddedId = switch (numStr.size()) {
+      case (0) { "000000000" };
+      case (1) { "00000000" # numStr };
+      case (2) { "0000000" # numStr };
+      case (3) { "000000" # numStr };
+      case (4) { "00000" # numStr };
+      case (5) { "0000" # numStr };
+      case (6) { "000" # numStr };
+      case (7) { "00" # numStr };
+      case (8) { "0" # numStr };
+      case (9) { numStr };
+      case (_) { numStr };
+    };
+    "RI " # paddedId;
+  };
+
+  public shared ({ caller }) func registerMember(registration : MemberRegistration) : async MemberRegistrationResult {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only registered users can register members");
     };
@@ -123,17 +159,24 @@ actor {
 
     let newMatrixPosition = findNextMatrixSlot(uplineId, newMemberId);
 
+    let currentTime = Time.now();
+    let membershipDeadline = currentTime + threeDaysInNanoseconds;
+    let memberIdStr = formatMemberId(newMemberId);
+
     let newMemberRecord : Member = {
       id = newMemberId;
+      memberIdStr; // Add formatted id to record
       name;
       contactInfo = registration.contactInfo;
       sponsorId = registration.sponsorId;
       joiningFeePaid = true;
       feeRefunded = false;
-      registrationTimestamp = Time.now();
+      registrationTimestamp = currentTime;
       matrixPosition = newMatrixPosition;
       commissions = [];
       directDownlines = [];
+      membershipDeadline;
+      isCancelled = false;
     };
 
     persistNewMember(newMemberRecord, uplineId);
@@ -143,7 +186,10 @@ actor {
       processCommissionsAndRefunds(uplineId, newMatrixPosition);
     };
 
-    newMemberId;
+    {
+      id = newMemberId;
+      memberId = memberIdStr;
+    };
   };
 
   public query ({ caller }) func getMember(id : MemberId) : async ?MemberPublic {
@@ -200,9 +246,17 @@ actor {
     };
   };
 
+  public shared ({ caller }) func checkMembershipStatuses() : async () {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admins can run status check");
+    };
+    checkAndExpireMembers();
+  };
+
   func toPublic(record : Member) : MemberPublic {
     {
       id = record.id;
+      memberIdStr = record.memberIdStr;
       name = record.name;
       contactInfo = record.contactInfo;
       sponsorId = record.sponsorId;
@@ -211,6 +265,8 @@ actor {
       registrationTimestamp = record.registrationTimestamp;
       matrixPosition = record.matrixPosition;
       directDownlines = record.directDownlines;
+      membershipDeadline = record.membershipDeadline;
+      isCancelled = record.isCancelled;
     };
   };
 
@@ -312,6 +368,21 @@ actor {
               depth += 1;
             };
           };
+        };
+      };
+    };
+  };
+
+  func checkAndExpireMembers() {
+    let currentTime = Time.now();
+    let memberEntries = members.toArray();
+    for ((id, member) in memberEntries.values()) {
+      if (not member.isCancelled and currentTime > member.membershipDeadline) {
+        if (member.directDownlines.size() < 3) {
+          let updatedMember = {
+            member with isCancelled = true
+          };
+          members.add(id, updatedMember);
         };
       };
     };

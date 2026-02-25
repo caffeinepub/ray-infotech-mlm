@@ -27,12 +27,15 @@ export const MLMTreePosition = IDL.Record({
 });
 export const MemberPublic = IDL.Record({
   'id' : IDL.Nat,
+  'isCancelled' : IDL.Bool,
   'contactInfo' : IDL.Text,
   'name' : IDL.Text,
   'sponsorId' : IDL.Opt(IDL.Nat),
+  'membershipDeadline' : Time,
   'feeRefunded' : IDL.Bool,
   'directDownlines' : IDL.Vec(MemberId),
   'registrationTimestamp' : Time,
+  'memberIdStr' : IDL.Text,
   'joiningFeePaid' : IDL.Bool,
   'matrixPosition' : MLMTreePosition,
 });
@@ -41,10 +44,15 @@ export const MemberRegistration = IDL.Record({
   'name' : IDL.Text,
   'sponsorId' : IDL.Opt(MemberId),
 });
+export const MemberRegistrationResult = IDL.Record({
+  'id' : MemberId,
+  'memberId' : IDL.Text,
+});
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'checkMembershipStatuses' : IDL.Func([], [], []),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getMember' : IDL.Func([MemberId], [IDL.Opt(MemberPublic)], ['query']),
@@ -57,7 +65,11 @@ export const idlService = IDL.Service({
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'listMembersByName' : IDL.Func([], [IDL.Vec(MemberPublic)], ['query']),
   'markJoiningFeePaid' : IDL.Func([MemberId], [], []),
-  'registerMember' : IDL.Func([MemberRegistration], [MemberId], []),
+  'registerMember' : IDL.Func(
+      [MemberRegistration],
+      [MemberRegistrationResult],
+      [],
+    ),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
 });
 
@@ -83,12 +95,15 @@ export const idlFactory = ({ IDL }) => {
   });
   const MemberPublic = IDL.Record({
     'id' : IDL.Nat,
+    'isCancelled' : IDL.Bool,
     'contactInfo' : IDL.Text,
     'name' : IDL.Text,
     'sponsorId' : IDL.Opt(IDL.Nat),
+    'membershipDeadline' : Time,
     'feeRefunded' : IDL.Bool,
     'directDownlines' : IDL.Vec(MemberId),
     'registrationTimestamp' : Time,
+    'memberIdStr' : IDL.Text,
     'joiningFeePaid' : IDL.Bool,
     'matrixPosition' : MLMTreePosition,
   });
@@ -97,10 +112,15 @@ export const idlFactory = ({ IDL }) => {
     'name' : IDL.Text,
     'sponsorId' : IDL.Opt(MemberId),
   });
+  const MemberRegistrationResult = IDL.Record({
+    'id' : MemberId,
+    'memberId' : IDL.Text,
+  });
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'checkMembershipStatuses' : IDL.Func([], [], []),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getMember' : IDL.Func([MemberId], [IDL.Opt(MemberPublic)], ['query']),
@@ -113,7 +133,11 @@ export const idlFactory = ({ IDL }) => {
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'listMembersByName' : IDL.Func([], [IDL.Vec(MemberPublic)], ['query']),
     'markJoiningFeePaid' : IDL.Func([MemberId], [], []),
-    'registerMember' : IDL.Func([MemberRegistration], [MemberId], []),
+    'registerMember' : IDL.Func(
+        [MemberRegistration],
+        [MemberRegistrationResult],
+        [],
+      ),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   });
 };

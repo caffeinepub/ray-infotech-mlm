@@ -1,7 +1,7 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-24T19:58:48.030Z",
+  "generatedAt": "2026-02-25T19:47:33.890Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
@@ -11,47 +11,54 @@
     "implemented": 2,
     "items": [
       {
-        "id": "REQ-11",
-        "summary": "Update the backend commission calculation logic so that each successive matrix level earns a decreasing commission rate applied to the total collection at that level: Level 1 = 9%, Level 2 = 8%, Level 3 = 7%, Level 4 = 6%, Level 5 = 5%, Level 6 = 4%, Level 7 = 3%, Level 8 = 2%, Level 9 = 1%. Total collection at a given level equals the number of members at that level multiplied by the ₹2750 joining fee. Remove or replace any previously implemented commission rate array with this corrected 9-level descending structure.",
+        "id": "REQ-1",
+        "summary": "Update the backend member registration logic to generate a unique member ID in the format 'RI' followed by a zero-padded 9-digit sequential number (e.g., RI 001920001). Store this formatted ID as part of the member record and return it upon successful registration.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
-        "id": "REQ-12",
-        "summary": "Update the frontend commission history table (CommissionHistoryTable.tsx) and earnings summary (EarningsSummary.tsx) to reflect the corrected commission rate array: [9, 8, 7, 6, 5, 4, 3, 2, 1] percent for levels 1 through 9. Ensure per-level commission amounts displayed to the user are computed as the applicable percentage of the total collection at that level (number of members at the level × ₹2750), not as a flat per-member fee.",
+        "id": "REQ-2",
+        "summary": "Create a dedicated Member Joining Form page (or update the existing RegisterPage) that collects name, mobile number, email, and optional sponsor ID. On successful submission, display the newly generated unique member ID (e.g., RI 001920001) to the user. The form must validate all required fields before submission.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/CommissionHistoryTable.tsx",
-          "frontend/src/components/EarningsSummary.tsx"
+          "frontend/src/pages/RegisterPage.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ],
         "matchedFiles": [
-          "frontend/src/components/CommissionHistoryTable.tsx",
-          "frontend/src/components/EarningsSummary.tsx"
+          "frontend/src/pages/RegisterPage.tsx"
         ]
       },
       {
-        "id": "REQ-13",
-        "summary": "Update the HomePage commission level breakdown section to display the corrected commission rates: Level 1 = 9%, Level 2 = 8%, Level 3 = 7%, continuing down to Level 9 = 1%, each described as a percentage of total collection at that level.",
+        "id": "REQ-3",
+        "summary": "Ensure that upon successful member registration, the new member is immediately visible in the Admin Dashboard (AdminPanel) member list without requiring a manual refresh. The admin table must display the newly generated unique member ID (RI format) as a column.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/HomePage.tsx"
+          "frontend/src/pages/AdminPanel.tsx",
+          "frontend/src/pages/RegisterPage.tsx",
+          "frontend/src/components/Header.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/HomePage.tsx"
+          "frontend/src/pages/AdminPanel.tsx",
+          "frontend/src/pages/RegisterPage.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
     "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/components/CommissionHistoryTable.tsx",
-    "frontend/src/components/EarningsSummary.tsx",
-    "frontend/src/pages/HomePage.tsx",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
+    "frontend/src/components/MatrixTreeVisualization.tsx",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
+    "frontend/src/pages/AdminPanel.tsx",
+    "frontend/src/pages/RegisterPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

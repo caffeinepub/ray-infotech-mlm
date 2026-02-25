@@ -12,6 +12,7 @@ import type { MemberPublic } from '../backend';
 import MatrixTreeVisualization from '../components/MatrixTreeVisualization';
 import CommissionHistoryTable from '../components/CommissionHistoryTable';
 import EarningsSummary from '../components/EarningsSummary';
+import RecruitmentDeadlineCard from '../components/RecruitmentDeadlineCard';
 
 export default function DashboardPage() {
   const { identity, login, loginStatus } = useInternetIdentity();
@@ -159,6 +160,9 @@ export default function DashboardPage() {
       {/* Selected Member Details */}
       {selectedMember && (
         <div className="space-y-6 mb-8">
+          {/* Recruitment Deadline Card — shown immediately at top */}
+          <RecruitmentDeadlineCard member={selectedMember} />
+
           {/* Member Info Card */}
           <Card className="bg-card border-border">
             <CardContent className="p-6">
@@ -175,7 +179,9 @@ export default function DashboardPage() {
                   </div>
                   <p className="text-muted-foreground text-sm">{selectedMember.contactInfo}</p>
                   <p className="text-muted-foreground text-xs mt-1">
-                    Joined: {new Date(Number(selectedMember.registrationTimestamp) / 1_000_000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    Joined: {new Date(Number(selectedMember.registrationTimestamp) / 1_000_000).toLocaleString('en-IN', {
+                      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true
+                    })}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">

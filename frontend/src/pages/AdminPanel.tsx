@@ -11,11 +11,34 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Shield, Users, IndianRupee, TrendingUp, Search, RefreshCw, CheckCircle, Clock, LogIn, AlertTriangle } from 'lucide-react';
+import { Shield, Users, Search, RefreshCw, CheckCircle, Clock, LogIn, AlertTriangle, XCircle, CalendarClock, IdCard } from 'lucide-react';
 import type { MemberPublic } from '../backend';
 import PlatformStatistics from '../components/PlatformStatistics';
+import { formatDeadlineTimestamp, computeDeadlineStatus, type DeadlineStatus } from '../utils/deadlineHelpers';
 
 const ITEMS_PER_PAGE = 10;
+
+function DeadlineStatusBadge({ status }: { status: DeadlineStatus }) {
+  if (status === 'Met') {
+    return (
+      <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-xs whitespace-nowrap">
+        <CheckCircle size={10} className="mr-1" /> Met
+      </Badge>
+    );
+  }
+  if (status === 'Cancelled') {
+    return (
+      <Badge className="bg-destructive/20 text-destructive border-destructive/30 text-xs whitespace-nowrap">
+        <XCircle size={10} className="mr-1" /> Cancelled
+      </Badge>
+    );
+  }
+  return (
+    <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs whitespace-nowrap">
+      <Clock size={10} className="mr-1" /> Active
+    </Badge>
+  );
+}
 
 export default function AdminPanel() {
   const { identity, login, loginStatus } = useInternetIdentity();
@@ -82,7 +105,8 @@ export default function AdminPanel() {
 
   const filteredMembers = (members || []).filter((m) =>
     m.name.toLowerCase().includes(search.toLowerCase()) ||
-    m.id.toString().includes(search)
+    m.id.toString().includes(search) ||
+    m.memberIdStr.toLowerCase().includes(search.toLowerCase())
   );
 
   const totalPages = Math.ceil(filteredMembers.length / ITEMS_PER_PAGE);
@@ -95,15 +119,6 @@ export default function AdminPanel() {
     } catch {
       toast.error('Failed to update fee status');
     }
-  };
-
-  const getCommissionsForMember = (member: MemberPublic, allMembers: MemberPublic[]): number => {
-    // Calculate total commissions earned by this member based on their downlines
-    // Commission is earned when downlines join at various levels
-    // This is a simplified calculation based on available data
-    let total = 0;
-    if (member.feeRefunded) total += 2750;
-    return total;
   };
 
   return (
@@ -147,7 +162,7 @@ export default function AdminPanel() {
               <Input
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                placeholder="Search by name or ID..."
+                placeholder="Search by name, ID or RI number..."
                 className="pl-9 bg-background border-border focus:border-gold-500"
               />
             </div>
@@ -171,72 +186,105 @@ export default function AdminPanel() {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-border hover:bg-transparent">
-                      <TableHead className="text-muted-foreground">ID</TableHead>
+                      <TableHead className="text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <IdCard size={13} />
+                          Member ID
+                        </span>
+                      </TableHead>
+                      <TableHead className="text-muted-foreground">#</TableHead>
                       <TableHead className="text-muted-foreground">Name</TableHead>
                       <TableHead className="text-muted-foreground">Contact</TableHead>
-                      <TableHead className="text-muted-foreground">Join Date</TableHead>
+                      <TableHead className="text-muted-foreground">Join Date &amp; Time</TableHead>
                       <TableHead className="text-muted-foreground">Downlines</TableHead>
+                      <TableHead className="text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <CalendarClock size={13} />
+                          Recruitment Deadline
+                        </span>
+                      </TableHead>
+                      <TableHead className="text-muted-foreground">Deadline Status</TableHead>
                       <TableHead className="text-muted-foreground">Refund Status</TableHead>
                       <TableHead className="text-muted-foreground">Level</TableHead>
                       <TableHead className="text-muted-foreground">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedMembers.map((member) => (
-                      <TableRow key={member.id.toString()} className="border-border hover:bg-muted/30">
-                        <TableCell className="font-mono text-gold-400 font-semibold">
-                          #{member.id.toString()}
-                        </TableCell>
-                        <TableCell className="font-medium text-foreground">{member.name}</TableCell>
-                        <TableCell className="text-muted-foreground text-xs max-w-[160px] truncate">
-                          {member.contactInfo}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
-                          {new Date(Number(member.registrationTimestamp) / 1_000_000).toLocaleDateString('en-IN', {
-                            day: '2-digit', month: 'short', year: 'numeric'
-                          })}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <span className="text-foreground font-medium">{member.directDownlines.length}</span>
-                            <span className="text-muted-foreground">/3</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={member.feeRefunded
-                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-xs'
-                            : 'bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs'
-                          }>
-                            {member.feeRefunded ? (
-                              <><CheckCircle size={10} className="mr-1" /> Refunded</>
-                            ) : (
-                              <><Clock size={10} className="mr-1" /> Pending</>
-                            )}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
-                          L{member.matrixPosition.level.toString()}
-                        </TableCell>
-                        <TableCell>
-                          {!member.joiningFeePaid && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleMarkPaid(member)}
-                              disabled={markFeePaid.isPending}
-                              className="text-xs border-gold-500/30 text-gold-400 hover:bg-gold-500/10"
-                            >
-                              Mark Paid
-                            </Button>
-                          )}
-                          {member.joiningFeePaid && (
-                            <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">
-                              Fee Paid
+                    {paginatedMembers.map((member) => {
+                      const deadlineStatus = computeDeadlineStatus(
+                        member.membershipDeadline,
+                        member.directDownlines,
+                        member.isCancelled
+                      );
+                      return (
+                        <TableRow key={member.id.toString()} className="border-border hover:bg-muted/30">
+                          {/* Unique RI Member ID — first and prominent */}
+                          <TableCell>
+                            <span className="font-mono font-bold text-gold-400 text-sm tracking-wide whitespace-nowrap bg-gold-500/10 border border-gold-500/25 rounded px-2 py-0.5">
+                              {member.memberIdStr}
+                            </span>
+                          </TableCell>
+                          <TableCell className="font-mono text-muted-foreground text-xs">
+                            #{member.id.toString()}
+                          </TableCell>
+                          <TableCell className="font-medium text-foreground">{member.name}</TableCell>
+                          <TableCell className="text-muted-foreground text-xs max-w-[140px] truncate">
+                            {member.contactInfo}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
+                            {new Date(Number(member.registrationTimestamp) / 1_000_000).toLocaleString('en-IN', {
+                              day: '2-digit', month: 'short', year: 'numeric',
+                              hour: '2-digit', minute: '2-digit', hour12: true,
+                            })}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <span className="text-foreground font-medium">{member.directDownlines.length}</span>
+                              <span className="text-muted-foreground">/3</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
+                            {formatDeadlineTimestamp(member.membershipDeadline)}
+                          </TableCell>
+                          <TableCell>
+                            <DeadlineStatusBadge status={deadlineStatus} />
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={member.feeRefunded
+                              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-xs'
+                              : 'bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs'
+                            }>
+                              {member.feeRefunded ? (
+                                <><CheckCircle size={10} className="mr-1" /> Refunded</>
+                              ) : (
+                                <><Clock size={10} className="mr-1" /> Pending</>
+                              )}
                             </Badge>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            L{member.matrixPosition.level.toString()}
+                          </TableCell>
+                          <TableCell>
+                            {!member.joiningFeePaid && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleMarkPaid(member)}
+                                disabled={markFeePaid.isPending}
+                                className="text-xs border-gold-500/30 text-gold-400 hover:bg-gold-500/10"
+                              >
+                                Mark Paid
+                              </Button>
+                            )}
+                            {member.joiningFeePaid && (
+                              <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">
+                                Fee Paid
+                              </Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>

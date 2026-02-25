@@ -27,7 +27,23 @@ function buildTree(memberId: bigint, allMembers: MemberPublic[], depth: number, 
 
   // Add empty slots
   while (children.length < 3 && depth < maxDepth) {
-    children.push({ member: { id: BigInt(-1), name: '', contactInfo: '', feeRefunded: false, directDownlines: [], registrationTimestamp: BigInt(0), joiningFeePaid: false, matrixPosition: { memberId: BigInt(-1), level: BigInt(0), position: BigInt(0) } }, children: [], depth: depth + 1 });
+    children.push({
+      member: {
+        id: BigInt(-1),
+        memberIdStr: '',
+        name: '',
+        contactInfo: '',
+        feeRefunded: false,
+        directDownlines: [],
+        registrationTimestamp: BigInt(0),
+        joiningFeePaid: false,
+        matrixPosition: { memberId: BigInt(-1), level: BigInt(0), position: BigInt(0) },
+        membershipDeadline: BigInt(0),
+        isCancelled: false,
+      },
+      children: [],
+      depth: depth + 1,
+    });
   }
 
   return { member, children, depth };

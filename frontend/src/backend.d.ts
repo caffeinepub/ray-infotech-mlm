@@ -13,14 +13,21 @@ export interface MemberRegistration {
     sponsorId?: MemberId;
 }
 export type Time = bigint;
+export interface MemberRegistrationResult {
+    id: MemberId;
+    memberId: string;
+}
 export interface MemberPublic {
     id: bigint;
+    isCancelled: boolean;
     contactInfo: string;
     name: string;
     sponsorId?: bigint;
+    membershipDeadline: Time;
     feeRefunded: boolean;
     directDownlines: Array<MemberId>;
     registrationTimestamp: Time;
+    memberIdStr: string;
     joiningFeePaid: boolean;
     matrixPosition: MLMTreePosition;
 }
@@ -42,6 +49,7 @@ export enum UserRole {
 }
 export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    checkMembershipStatuses(): Promise<void>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getMember(id: MemberId): Promise<MemberPublic | null>;
@@ -50,6 +58,6 @@ export interface backendInterface {
     isCallerAdmin(): Promise<boolean>;
     listMembersByName(): Promise<Array<MemberPublic>>;
     markJoiningFeePaid(memberId: MemberId): Promise<void>;
-    registerMember(registration: MemberRegistration): Promise<MemberId>;
+    registerMember(registration: MemberRegistration): Promise<MemberRegistrationResult>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
 }

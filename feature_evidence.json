@@ -2,11 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-update-the-frontend-commission-history-table-commissionhistorytable-tsx-and-earnings-summary-earningssummary-tsx-to-reflect-the-corrected-commission-rate-array-9-8-7-6-5-4-3-2-1-percent-for-levels-1-through-9-ensure-per-level-commission-amounts-displayed-to-the-user-are-computed-as-the-applicable-percentage-of-the-total-collection-at-that-level-number-of-members-at-the-level-2750-not-as-a-flat-per-member-fee",
-      "featureTitle": "Update the frontend commission history table (CommissionHistoryTable.tsx) and earnings summary (EarningsSummary.tsx) to reflect the corrected commission rate array: [9, 8, 7, 6, 5, 4, 3, 2, 1] percent for levels 1 through 9. Ensure per-level commission amounts displayed to the user are computed as the applicable percentage of the total collection at that level (number of members at the level × ₹2750), not as a flat per-member fee.",
+      "featureId": "feature-create-a-dedicated-member-joining-form-page-or-update-the-existing-registerpage-that-collects-name-mobile-number-email-and-optional-sponsor-id-on-successful-submission-display-the-newly-generated-unique-member-id-e-g-ri-001920001-to-the-user-the-form-must-validate-all-required-fields-before-submission",
+      "featureTitle": "Create a dedicated Member Joining Form page (or update the existing RegisterPage) that collects name, mobile number, email, and optional sponsor ID. On successful submission, display the newly generated unique member ID (e.g., RI 001920001) to the user. The form must validate all required fields before submission.",
       "files": [
-        "frontend/src/components/CommissionHistoryTable.tsx",
-        "frontend/src/components/EarningsSummary.tsx"
+        "frontend/src/pages/RegisterPage.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -17,15 +16,16 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-12"
+        "REQ-2"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-update-the-homepage-commission-level-breakdown-section-to-display-the-corrected-commission-rates-level-1-9-level-2-8-level-3-7-continuing-down-to-level-9-1-each-described-as-a-percentage-of-total-collection-at-that-level",
-      "featureTitle": "Update the HomePage commission level breakdown section to display the corrected commission rates: Level 1 = 9%, Level 2 = 8%, Level 3 = 7%, continuing down to Level 9 = 1%, each described as a percentage of total collection at that level.",
+      "featureId": "feature-ensure-that-upon-successful-member-registration-the-new-member-is-immediately-visible-in-the-admin-dashboard-adminpanel-member-list-without-requiring-a-manual-refresh-the-admin-table-must-display-the-newly-generated-unique-member-id-ri-format-as-a-column",
+      "featureTitle": "Ensure that upon successful member registration, the new member is immediately visible in the Admin Dashboard (AdminPanel) member list without requiring a manual refresh. The admin table must display the newly generated unique member ID (RI format) as a column.",
       "files": [
-        "frontend/src/pages/HomePage.tsx"
+        "frontend/src/pages/AdminPanel.tsx",
+        "frontend/src/pages/RegisterPage.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -36,7 +36,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-13"
+        "REQ-3"
       ],
       "confidence": "high"
     }
