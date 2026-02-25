@@ -8,20 +8,22 @@ interface EarningsSummaryProps {
 }
 
 const JOINING_FEE = 2750;
+
+// Level 1 = 9%, Level 2 = 8%, ..., Level 9 = 1%
+// depth in tree maps directly: depth 1 → 9%, depth 2 → 8%, ..., depth 9 → 1%
 const COMMISSION_RATES: Record<number, number> = {
-  2: 9, 3: 8, 4: 7, 5: 6, 6: 5, 7: 4, 8: 3, 9: 2, 10: 1,
+  1: 9, 2: 8, 3: 7, 4: 6, 5: 5, 6: 4, 7: 3, 8: 2, 9: 1,
 };
 
 function calculateMemberEarnings(member: MemberPublic, allMembers: MemberPublic[]) {
   let refundAmount = 0;
   let commissionTotal = 0;
-  const commissions: Array<{ level: number; amount: number; memberId: bigint }> = [];
 
   if (member.feeRefunded) {
     refundAmount = JOINING_FEE;
   }
 
-  // Calculate commissions: for each member in the downline tree, check what level they are relative to this member
+  // Find depth of a target member relative to this member's tree
   const getDepth = (targetId: bigint, fromId: bigint, depth: number): number => {
     if (targetId === fromId) return depth;
     const fromMember = allMembers.find((m) => m.id === fromId);
@@ -33,21 +35,30 @@ function calculateMemberEarnings(member: MemberPublic, allMembers: MemberPublic[
     return -1;
   };
 
-  // Walk all members and find those in this member's downline
-  for (const m of allMembers) {
-    if (m.id === member.id) continue;
-    const depth = getDepth(m.id, member.id, 0);
-    if (depth >= 2 && depth <= 10 && member.feeRefunded) {
+  if (member.feeRefunded) {
+    // Group members by depth level
+    const levelCounts: Record<number, number> = {};
+
+    for (const m of allMembers) {
+      if (m.id === member.id) continue;
+      const depth = getDepth(m.id, member.id, 0);
+      if (depth >= 1 && depth <= 9) {
+        levelCounts[depth] = (levelCounts[depth] ?? 0) + 1;
+      }
+    }
+
+    // Commission = rate% × (count × ₹2750) for each level
+    for (const [depthStr, count] of Object.entries(levelCounts)) {
+      const depth = Number(depthStr);
       const rate = COMMISSION_RATES[depth];
       if (rate) {
-        const amount = Math.floor((JOINING_FEE * rate) / 100);
-        commissionTotal += amount;
-        commissions.push({ level: depth, amount, memberId: m.id });
+        const totalCollection = count * JOINING_FEE;
+        commissionTotal += Math.floor((totalCollection * rate) / 100);
       }
     }
   }
 
-  return { refundAmount, commissionTotal, total: refundAmount + commissionTotal, commissions };
+  return { refundAmount, commissionTotal, total: refundAmount + commissionTotal };
 }
 
 export default function EarningsSummary({ member, allMembers }: EarningsSummaryProps) {

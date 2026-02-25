@@ -1,37 +1,56 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-24T19:44:15.973Z",
+  "generatedAt": "2026-02-24T19:58:48.030Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 1,
-    "implemented": 1,
+    "total": 3,
+    "implemented": 2,
     "items": [
       {
-        "id": "REQ-10",
-        "summary": "Regenerate the Ray Infotech branded logo image ensuring the company name is spelled correctly as 'Ray Infotech' with no typos or character errors, and update frontend/public/assets/generated/ray-infotech-logo.png with the corrected image.",
+        "id": "REQ-11",
+        "summary": "Update the backend commission calculation logic so that each successive matrix level earns a decreasing commission rate applied to the total collection at that level: Level 1 = 9%, Level 2 = 8%, Level 3 = 7%, Level 4 = 6%, Level 5 = 5%, Level 6 = 4%, Level 7 = 3%, Level 8 = 2%, Level 9 = 1%. Total collection at a given level equals the number of members at that level multiplied by the ₹2750 joining fee. Remove or replace any previously implemented commission rate array with this corrected 9-level descending structure.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-12",
+        "summary": "Update the frontend commission history table (CommissionHistoryTable.tsx) and earnings summary (EarningsSummary.tsx) to reflect the corrected commission rate array: [9, 8, 7, 6, 5, 4, 3, 2, 1] percent for levels 1 through 9. Ensure per-level commission amounts displayed to the user are computed as the applicable percentage of the total collection at that level (number of members at the level × ₹2750), not as a flat per-member fee.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/HomePage.tsx",
-          "frontend/src/components/Header.tsx"
+          "frontend/src/components/CommissionHistoryTable.tsx",
+          "frontend/src/components/EarningsSummary.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/HomePage.tsx",
-          "frontend/src/components/Header.tsx"
+          "frontend/src/components/CommissionHistoryTable.tsx",
+          "frontend/src/components/EarningsSummary.tsx"
+        ]
+      },
+      {
+        "id": "REQ-13",
+        "summary": "Update the HomePage commission level breakdown section to display the corrected commission rates: Level 1 = 9%, Level 2 = 8%, Level 3 = 7%, continuing down to Level 9 = 1%, each described as a percentage of total collection at that level.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/HomePage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/HomePage.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
+    "backend/main.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/public/assets/generated/ray-infotech-logo.dim_400x400.png",
-    "frontend/src/components/Header.tsx",
+    "frontend/src/components/CommissionHistoryTable.tsx",
+    "frontend/src/components/EarningsSummary.tsx",
     "frontend/src/pages/HomePage.tsx",
     "project_state.json",
     "scratch/component-selection.json",

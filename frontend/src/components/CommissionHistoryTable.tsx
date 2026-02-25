@@ -10,16 +10,20 @@ interface CommissionHistoryTableProps {
 }
 
 const JOINING_FEE = 2750;
+
+// Level 1 = 9%, Level 2 = 8%, ..., Level 9 = 1%
+// depth in tree maps directly: depth 1 → 9%, depth 2 → 8%, ..., depth 9 → 1%
 const COMMISSION_RATES: Record<number, number> = {
-  2: 9, 3: 8, 4: 7, 5: 6, 6: 5, 7: 4, 8: 3, 9: 2, 10: 1,
+  1: 9, 2: 8, 3: 7, 4: 6, 5: 5, 6: 4, 7: 3, 8: 2, 9: 1,
 };
 
 interface CommissionEntry {
   type: 'refund' | 'commission';
   level: number;
   percentage: number | null;
+  memberCount: number;
+  totalCollection: number;
   amount: number;
-  fromMember: MemberPublic | null;
   timestamp: bigint;
 }
 
@@ -30,15 +34,16 @@ function buildCommissionHistory(member: MemberPublic, allMembers: MemberPublic[]
   if (member.feeRefunded) {
     entries.push({
       type: 'refund',
-      level: 1,
+      level: 0,
       percentage: null,
+      memberCount: 3,
+      totalCollection: JOINING_FEE * 3,
       amount: JOINING_FEE,
-      fromMember: null,
       timestamp: member.registrationTimestamp,
     });
   }
 
-  // Commission entries from downlines
+  // Find depth of a target member relative to this member's tree
   const getDepth = (targetId: bigint, fromId: bigint, depth: number): number => {
     if (targetId === fromId) return depth;
     const fromMember = allMembers.find((m) => m.id === fromId);
@@ -51,27 +56,46 @@ function buildCommissionHistory(member: MemberPublic, allMembers: MemberPublic[]
   };
 
   if (member.feeRefunded) {
+    // Group members by their depth level relative to this member
+    const levelGroups: Record<number, MemberPublic[]> = {};
+
     for (const m of allMembers) {
       if (m.id === member.id) continue;
       const depth = getDepth(m.id, member.id, 0);
-      if (depth >= 2 && depth <= 10) {
-        const rate = COMMISSION_RATES[depth];
-        if (rate) {
-          entries.push({
-            type: 'commission',
-            level: depth,
-            percentage: rate,
-            amount: Math.floor((JOINING_FEE * rate) / 100),
-            fromMember: m,
-            timestamp: m.registrationTimestamp,
-          });
-        }
+      if (depth >= 1 && depth <= 9) {
+        if (!levelGroups[depth]) levelGroups[depth] = [];
+        levelGroups[depth].push(m);
+      }
+    }
+
+    // Create one commission entry per level (total collection at that level)
+    for (const [depthStr, membersAtLevel] of Object.entries(levelGroups)) {
+      const depth = Number(depthStr);
+      const rate = COMMISSION_RATES[depth];
+      if (rate && membersAtLevel.length > 0) {
+        const memberCount = membersAtLevel.length;
+        const totalCollection = memberCount * JOINING_FEE;
+        const amount = Math.floor((totalCollection * rate) / 100);
+        // Use the latest registration timestamp among members at this level
+        const latestTimestamp = membersAtLevel.reduce(
+          (max, m) => (m.registrationTimestamp > max ? m.registrationTimestamp : max),
+          membersAtLevel[0].registrationTimestamp
+        );
+        entries.push({
+          type: 'commission',
+          level: depth,
+          percentage: rate,
+          memberCount,
+          totalCollection,
+          amount,
+          timestamp: latestTimestamp,
+        });
       }
     }
   }
 
-  // Sort by timestamp descending
-  entries.sort((a, b) => (b.timestamp > a.timestamp ? 1 : -1));
+  // Sort by level ascending (refund first, then level 1, 2, ...)
+  entries.sort((a, b) => a.level - b.level);
 
   return entries;
 }
@@ -115,9 +139,9 @@ export default function CommissionHistoryTable({ member, allMembers }: Commissio
                   <TableHead className="text-muted-foreground">Type</TableHead>
                   <TableHead className="text-muted-foreground">Level</TableHead>
                   <TableHead className="text-muted-foreground">Rate</TableHead>
-                  <TableHead className="text-muted-foreground">Amount</TableHead>
-                  <TableHead className="text-muted-foreground">From Member</TableHead>
-                  <TableHead className="text-muted-foreground">Date</TableHead>
+                  <TableHead className="text-muted-foreground">Members</TableHead>
+                  <TableHead className="text-muted-foreground">Total Collection</TableHead>
+                  <TableHead className="text-muted-foreground">Commission</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -135,21 +159,21 @@ export default function CommissionHistoryTable({ member, allMembers }: Commissio
                       )}
                     </TableCell>
                     <TableCell className="text-foreground font-medium">
-                      Level {entry.level}
+                      {entry.type === 'refund' ? 'Direct (L0)' : `Level ${entry.level}`}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {entry.percentage !== null ? `${entry.percentage}%` : 'Full Refund'}
+                      {entry.percentage !== null ? `${entry.percentage}% of total` : 'Full Refund'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {entry.type === 'commission' ? entry.memberCount : '—'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {entry.type === 'commission'
+                        ? `₹${entry.totalCollection.toLocaleString('en-IN')}`
+                        : '—'}
                     </TableCell>
                     <TableCell className="font-semibold text-gold-400">
                       ₹{entry.amount.toLocaleString('en-IN')}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {entry.fromMember ? `${entry.fromMember.name} (#${entry.fromMember.id.toString()})` : '—'}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {new Date(Number(entry.timestamp) / 1_000_000).toLocaleDateString('en-IN', {
-                        day: '2-digit', month: 'short', year: 'numeric'
-                      })}
                     </TableCell>
                   </TableRow>
                 ))}

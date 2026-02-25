@@ -1,33 +1,16 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-24T19:44:15.971Z",
-  "summary": "REQ-10 requires updating the logo image file at frontend/public/assets/generated/ray-infotech-logo.png with a corrected spelling. Instead, the diff shows the implementation replaced the image-based logo entirely with a text-based logo (Zap icon + bold gold text 'Ray Infotech') in both Header.tsx and HomePage.tsx. The PNG file itself was not updated. Additionally, the Header.tsx and HomePage.tsx files are listed as immutable frontend components per the constraints, and the diff modifies them anyway.",
-  "missing_requirements": [
-    {
-      "id": "REQ-10",
-      "requirement": "Regenerate the Ray Infotech branded logo image ensuring the company name is spelled correctly as 'Ray Infotech' and update frontend/public/assets/generated/ray-infotech-logo.png with the corrected image.",
-      "reason": "No PNG image file was added or modified in the diff. The requirement explicitly calls for updating frontend/public/assets/generated/ray-infotech-logo.png with a corrected logo image. The diff instead replaced the image with a text-based HTML logo element, which does not satisfy the AC that 'The updated logo is rendered in the hero section of the HomePage at /assets/generated/ray-infotech-logo.png'.",
-      "evidence": [
-        "frontend/src/pages/HomePage.tsx",
-        "frontend/src/components/Header.tsx"
-      ]
-    }
-  ],
-  "hallucinated_features": [
-    {
-      "description": "The image-based logo in the hero section was replaced with an entirely text/icon-based logo component using a Zap icon and styled HTML text, rather than updating the PNG file.",
-      "reason": "REQ-10 and the constraints specify to update only the PNG image file. The non-goals explicitly state not to modify any other pages or components beyond the logo image. Replacing the img tag with a text-based logo in HomePage.tsx and Header.tsx was not requested and violates the constraints.",
-      "evidence": [
-        "frontend/src/pages/HomePage.tsx",
-        "frontend/src/components/Header.tsx"
-      ]
-    }
-  ],
-  "confidence": 0.9,
+  "generatedAt": "2026-02-24T19:58:48.028Z",
+  "summary": "The diff implements all three requirements: REQ-11 (backend commission logic with 9%→1% descending rates applied to total collection per level), REQ-12 (CommissionHistoryTable.tsx and EarningsSummary.tsx updated with corrected rate array and total-collection-based calculation), and REQ-13 (HomePage.tsx updated with exactly 9 commission levels showing 9% down to 1% with total collection descriptions). All acceptance criteria appear to be satisfied based on the diff evidence.",
+  "missing_requirements": [],
+  "hallucinated_features": [],
+  "confidence": 0.88,
   "changed_files": [
+    "backend/main.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/components/Header.tsx",
+    "frontend/src/components/CommissionHistoryTable.tsx",
+    "frontend/src/components/EarningsSummary.tsx",
     "frontend/src/pages/HomePage.tsx",
     "project_state.json"
   ]

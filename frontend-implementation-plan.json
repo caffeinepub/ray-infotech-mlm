@@ -1,27 +1,43 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix Ray Infotech logo spelling/branding",
+  "title": "Correct commission structure to 9% down to 1% of total collection per level",
   "requirements": [
     {
-      "id": "REQ-10",
-      "summary": "Regenerate the Ray Infotech branded logo image with correct spelling and update the frontend to use the corrected logo",
+      "id": "REQ-12",
+      "summary": "Update commission history table and earnings summary to use corrected commission rates (9% down to 1%) applied to total collection per level",
       "acceptanceCriteria": [
-        "The logo image displays the brand name as exactly 'Ray Infotech' with correct spelling",
-        "All characters in the logo text are clearly legible and correctly formed",
-        "The updated logo is rendered in the hero section of the HomePage at /assets/generated/ray-infotech-logo.png",
-        "The logo maintains the deep navy and gold color palette consistent with the existing theme"
+        "CommissionHistoryTable uses the rate array [9, 8, 7, 6, 5, 4, 3, 2, 1] for levels 1–9",
+        "EarningsSummary calculates totals using the same corrected rate array",
+        "Commission amounts shown per level reflect percentage of total collection, not individual joining fee",
+        "HomePage commission level breakdown section displays the corrected rates (9% down to 1%)"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/CommissionHistoryTable.tsx",
+          "operation": "modify",
+          "description": "Replace the current commission rate calculation logic with the corrected 9-level descending rate array [9, 8, 7, 6, 5, 4, 3, 2, 1] (in percent). Update the commission calculation to apply each rate as a percentage of the total collection at that level (number of members at the level × ₹2750), rather than as a per-member fee. Ensure the table displays commission amounts that reflect this corrected calculation for levels 1 through 9."
+        },
+        {
+          "path": "frontend/src/components/EarningsSummary.tsx",
+          "operation": "modify",
+          "description": "Update the earnings calculation logic to use the corrected commission rate array [9, 8, 7, 6, 5, 4, 3, 2, 1] for levels 1–9. Ensure the total earnings calculation applies each percentage rate to the total collection at that level (count of members × ₹2750), not as a flat per-member amount. The summary should display accurate totals reflecting the corrected commission structure."
+        }
+      ]
+    },
+    {
+      "id": "REQ-13",
+      "summary": "Update HomePage commission level breakdown to display corrected rates (9% down to 1%) as percentages of total collection",
+      "acceptanceCriteria": [
+        "HomePage lists exactly 9 commission levels",
+        "Level 1 shows 9%, Level 2 shows 8%, ..., Level 9 shows 1%",
+        "Each level description states the rate is applied on total collection at that level"
       ],
       "file_operations": [
         {
           "path": "frontend/src/pages/HomePage.tsx",
           "operation": "modify",
-          "description": "Update the hero section to reference the corrected logo image at frontend/public/assets/generated/ray-infotech-logo.dim_400x200.png, ensuring the img src uses /assets/generated/ray-infotech-logo.png and the alt text clearly identifies it as the Ray Infotech logo with correct spelling"
-        },
-        {
-          "path": "frontend/src/components/Header.tsx",
-          "operation": "modify",
-          "description": "Update the header logo reference to use the corrected logo image at frontend/public/assets/generated/ray-infotech-logo.dim_400x120.png, ensuring the img src uses /assets/generated/ray-infotech-logo.png and maintains proper dimensions and accessibility attributes"
+          "description": "Update the commission level breakdown section to display exactly 9 levels with the corrected descending commission rates: Level 1 = 9%, Level 2 = 8%, Level 3 = 7%, Level 4 = 6%, Level 5 = 5%, Level 6 = 4%, Level 7 = 3%, Level 8 = 2%, Level 9 = 1%. Each level description must clearly state that the percentage is applied to the total collection at that level (number of members at level × ₹2750). Remove any reference to commission levels beyond Level 9 if present."
         }
       ]
     }

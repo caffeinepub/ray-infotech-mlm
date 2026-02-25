@@ -1,42 +1,93 @@
 {
   "kind": "build_request",
-  "title": "Fix Ray Infotech logo spelling/branding",
+  "title": "Correct commission structure to 9% down to 1% of total collection per level",
   "projectName": "Ray Infotech",
   "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-10",
-      "text": "Regenerate the Ray Infotech branded logo image ensuring the company name is spelled correctly as 'Ray Infotech' with no typos or character errors, and update frontend/public/assets/generated/ray-infotech-logo.png with the corrected image.",
-      "target": "frontend",
+      "id": "REQ-11",
+      "text": "Update the backend commission calculation logic so that each successive matrix level earns a decreasing commission rate applied to the total collection at that level: Level 1 = 9%, Level 2 = 8%, Level 3 = 7%, Level 4 = 6%, Level 5 = 5%, Level 6 = 4%, Level 7 = 3%, Level 8 = 2%, Level 9 = 1%. Total collection at a given level equals the number of members at that level multiplied by the ₹2750 joining fee. Remove or replace any previously implemented commission rate array with this corrected 9-level descending structure.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-recent"
+          "msg-4"
         ],
         "quotes": [
-          "Change logo with perfect spelling"
+          "Correct the Comission structure",
+          "9% of total collection",
+          "8% of total collection",
+          "7% of total collection",
+          "So on upto 1%"
         ]
       },
       "acceptanceCriteria": [
-        "The logo image displays the brand name as exactly 'Ray Infotech' with correct spelling",
-        "All characters in the logo text are clearly legible and correctly formed",
-        "The updated logo is rendered in the hero section of the HomePage at /assets/generated/ray-infotech-logo.png",
-        "The logo maintains the deep navy and gold color palette consistent with the existing theme"
+        "Level 1 commission = 9% × (count of members at level 1 × ₹2750)",
+        "Level 2 commission = 8% × (count of members at level 2 × ₹2750)",
+        "Level 3 commission = 7% × (count of members at level 3 × ₹2750)",
+        "The pattern continues decreasing by 1% per level down to Level 9 = 1%",
+        "No commission is applied beyond Level 9",
+        "Commission rates are applied to the total collection at that level, not per-individual fee"
+      ]
+    },
+    {
+      "id": "REQ-12",
+      "text": "Update the frontend commission history table (CommissionHistoryTable.tsx) and earnings summary (EarningsSummary.tsx) to reflect the corrected commission rate array: [9, 8, 7, 6, 5, 4, 3, 2, 1] percent for levels 1 through 9. Ensure per-level commission amounts displayed to the user are computed as the applicable percentage of the total collection at that level (number of members at the level × ₹2750), not as a flat per-member fee.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "Correct the Comission structure",
+          "9% of total collection",
+          "8% of total collection",
+          "7% of total collection",
+          "So on upto 1%"
+        ]
+      },
+      "acceptanceCriteria": [
+        "CommissionHistoryTable uses the rate array [9, 8, 7, 6, 5, 4, 3, 2, 1] for levels 1–9",
+        "EarningsSummary calculates totals using the same corrected rate array",
+        "Commission amounts shown per level reflect percentage of total collection, not individual joining fee",
+        "HomePage commission level breakdown section displays the corrected rates (9% down to 1%)"
+      ]
+    },
+    {
+      "id": "REQ-13",
+      "text": "Update the HomePage commission level breakdown section to display the corrected commission rates: Level 1 = 9%, Level 2 = 8%, Level 3 = 7%, continuing down to Level 9 = 1%, each described as a percentage of total collection at that level.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "9% of total collection",
+          "8% of total collection",
+          "7% of total collection",
+          "So on upto 1%"
+        ]
+      },
+      "acceptanceCriteria": [
+        "HomePage lists exactly 9 commission levels",
+        "Level 1 shows 9%, Level 2 shows 8%, ..., Level 9 shows 1%",
+        "Each level description states the rate is applied on total collection at that level"
       ]
     }
   ],
   "constraints": [
-    "Do not change the backend schema or any backend logic",
-    "Do not alter any immutable frontend paths (hooks, main.tsx, UI components)"
+    "Do not alter the joining fee amount of ₹2750",
+    "Do not change the 3-wide matrix tree structure",
+    "Do not modify files listed in frontend.immutablePaths",
+    "Commission rates must strictly follow the descending sequence 9%, 8%, 7%, 6%, 5%, 4%, 3%, 2%, 1% — no deviations"
   ],
   "nonGoals": [
-    "Changing the logo design style or color palette",
-    "Modifying any other pages or components beyond the logo image",
-    "Adding new features or functionality"
+    "Adding new commission levels beyond Level 9",
+    "Changing the refund logic for Level 0 (joining fee refund on first 3 direct downlines)",
+    "Modifying member registration or matrix placement logic",
+    "Changing authentication or admin panel access control"
   ],
   "imageRequirements": {
     "required": [],
-    "edits": [
-      "Fix the brand name text spelling so it reads exactly 'Ray Infotech' with correct lettering, maintaining the deep navy and gold professional style (ray-infotech-logo.png > ray-infotech-logo.dim_400x400.png)"
-    ]
+    "edits": []
   }
 }

@@ -2,10 +2,29 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-regenerate-the-ray-infotech-branded-logo-image-ensuring-the-company-name-is-spelled-correctly-as-ray-infotech-with-no-typos-or-character-errors-and-update-frontend-public-assets-generated-ray-infotech-logo-png-with-the-corrected-image",
-      "featureTitle": "Regenerate the Ray Infotech branded logo image ensuring the company name is spelled correctly as 'Ray Infotech' with no typos or character errors, and update frontend/public/assets/generated/ray-infotech-logo.png with the corrected image.",
+      "featureId": "feature-update-the-frontend-commission-history-table-commissionhistorytable-tsx-and-earnings-summary-earningssummary-tsx-to-reflect-the-corrected-commission-rate-array-9-8-7-6-5-4-3-2-1-percent-for-levels-1-through-9-ensure-per-level-commission-amounts-displayed-to-the-user-are-computed-as-the-applicable-percentage-of-the-total-collection-at-that-level-number-of-members-at-the-level-2750-not-as-a-flat-per-member-fee",
+      "featureTitle": "Update the frontend commission history table (CommissionHistoryTable.tsx) and earnings summary (EarningsSummary.tsx) to reflect the corrected commission rate array: [9, 8, 7, 6, 5, 4, 3, 2, 1] percent for levels 1 through 9. Ensure per-level commission amounts displayed to the user are computed as the applicable percentage of the total collection at that level (number of members at the level × ₹2750), not as a flat per-member fee.",
       "files": [
-        "frontend/src/components/Header.tsx",
+        "frontend/src/components/CommissionHistoryTable.tsx",
+        "frontend/src/components/EarningsSummary.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-12"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-update-the-homepage-commission-level-breakdown-section-to-display-the-corrected-commission-rates-level-1-9-level-2-8-level-3-7-continuing-down-to-level-9-1-each-described-as-a-percentage-of-total-collection-at-that-level",
+      "featureTitle": "Update the HomePage commission level breakdown section to display the corrected commission rates: Level 1 = 9%, Level 2 = 8%, Level 3 = 7%, continuing down to Level 9 = 1%, each described as a percentage of total collection at that level.",
+      "files": [
         "frontend/src/pages/HomePage.tsx"
       ],
       "components": [
@@ -17,7 +36,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-10"
+        "REQ-13"
       ],
       "confidence": "high"
     }

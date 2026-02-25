@@ -87,18 +87,6 @@ actor {
     sponsorId : ?MemberId;
   };
 
-  type TransactionAmount = Nat;
-  type CreditTransaction = {
-    memberId : MemberId;
-    amount : TransactionAmount;
-    transactionType : {
-      #joiningFeeRefund;
-      #commission : TreeLevel;
-    };
-    sourceCommissionee : ?MemberId;
-    timestamp : Time.Time;
-  };
-
   let members = Map.empty<MemberId, Member>();
   var nextMemberId = 1;
 
@@ -107,26 +95,21 @@ actor {
       Runtime.trap("Unauthorized: Only registered users can register members");
     };
 
-    // Validate name
     let name = registration.name;
     if (name.size() == 0 or name.size() > 100) {
       Runtime.trap("Member name must be between 1 and 100 characters. Input: " # registration.name);
     };
 
     let newMemberId = nextMemberId;
-
-    // Determine upline
     let uplineId = switch (registration.sponsorId) {
-      case (null) { newMemberId }; // first/root member sponsors themselves
+      case (null) { newMemberId };
       case (?id) { id };
     };
 
-    // Verify upline exists (unless this is the root member)
     if (uplineId != newMemberId and not members.containsKey(uplineId)) {
       Runtime.trap("Sponsor (upline) must be an existing member of the matrix. Upline Id: " # uplineId.toText());
     };
 
-    // Verify upline has room (max 3 direct downlines)
     if (uplineId != newMemberId) {
       switch (members.get(uplineId)) {
         case (null) { Runtime.trap("Upline not found") };
@@ -138,7 +121,6 @@ actor {
       };
     };
 
-    // Find position in matrix
     let newMatrixPosition = findNextMatrixSlot(uplineId, newMemberId);
 
     let newMemberRecord : Member = {
@@ -233,12 +215,10 @@ actor {
   };
 
   func findNextMatrixSlot(sponsorId : MemberId, newMemberId : MemberId) : MLMTreePosition {
-    // If this is the root (no real sponsor), place at level 1 position 0
     if (sponsorId == newMemberId) {
       return { memberId = newMemberId; level = 1; position = 0 };
     };
 
-    // BFS from sponsor to find first node with fewer than 3 children
     let queue = List.empty<(MemberId, TreeLevel)>();
     queue.add((sponsorId, 1));
 
@@ -274,10 +254,8 @@ actor {
   };
 
   func persistNewMember(member : Member, uplineId : MemberId) {
-    // Add new member record
     members.add(member.id, member);
 
-    // Update upline's downlines list (skip if root member)
     if (uplineId != member.id) {
       switch (members.get(uplineId)) {
         case (null) { Runtime.trap("Upline must exist already") };
@@ -294,7 +272,6 @@ actor {
   };
 
   func processCommissionsAndRefunds(uplineId : MemberId, _newMemberPosition : MLMTreePosition) {
-    // Check if upline now has exactly 3 direct downlines → refund joining fee
     switch (members.get(uplineId)) {
       case (null) { Runtime.trap("Upline must exist") };
       case (?uplineRecord) {
@@ -308,34 +285,26 @@ actor {
       };
     };
 
-    // Walk up the tree to calculate level-based commissions
-    // Level 2 = 9%, Level 3 = 8%, ..., Level 10 = 1%
-    // "Level" here refers to how many levels above the new member the ancestor is.
-    // After fee refund (level 1 full), subsequent completed levels earn commissions.
     var currentId = uplineId;
-    var depth = 1; // depth 1 = direct sponsor
+    var depth = 1;
 
-    label commissionLoop while (depth <= 10) {
+    label commissionLoop while (depth <= 9) {
       switch (members.get(currentId)) {
         case (null) { break commissionLoop };
         case (?currentMember) {
-          // Commissions start at depth 2 (level 2 = 9%) after fee is refunded
           if (depth >= 2 and currentMember.feeRefunded) {
-            let commissionPercent = if (depth <= 10) { 10 - depth } else { 0 };
-            if (commissionPercent > 0) {
-              let commissionAmount = (2750 * commissionPercent) / 100;
-              let newCommission : Commission = {
-                memberId = currentId;
-                amount = commissionAmount;
-                level = depth;
-                timestamp = Time.now();
-              };
-              let updatedCommissions = currentMember.commissions.concat([newCommission]);
-              members.add(currentId, { currentMember with commissions = updatedCommissions });
+            let commissionPercent = 10 - depth;
+            let commissionAmount = (2750 * commissionPercent) / 100;
+            let newCommission : Commission = {
+              memberId = currentId;
+              amount = commissionAmount;
+              level = depth;
+              timestamp = Time.now();
             };
+            let updatedCommissions = currentMember.commissions.concat([newCommission]);
+            members.add(currentId, { currentMember with commissions = updatedCommissions });
           };
 
-          // Move up to sponsor
           switch (currentMember.sponsorId) {
             case (null) { break commissionLoop };
             case (?sponsorId) {
