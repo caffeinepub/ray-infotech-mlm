@@ -1,151 +1,215 @@
-import { useNavigate, useRouterState } from '@tanstack/react-router';
+import React, { useState } from 'react';
+import { useNavigate, useLocation } from '@tanstack/react-router';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import { useQueryClient } from '@tanstack/react-query';
-import { useIsCallerAdmin } from '../hooks/useQueries';
 import { Button } from '@/components/ui/button';
-import { LogIn, LogOut, LayoutDashboard, UserPlus, Shield, Menu, X, Zap } from 'lucide-react';
-import { useState } from 'react';
+import { Menu, X, LogIn, LogOut, LayoutDashboard, UserPlus, Shield, Zap } from 'lucide-react';
 
 export default function Header() {
   const navigate = useNavigate();
-  const routerState = useRouterState();
-  const { login, clear, loginStatus, identity } = useInternetIdentity();
+  const location = useLocation();
+  const { identity, clear, loginStatus } = useInternetIdentity();
   const queryClient = useQueryClient();
-  const { data: isAdmin } = useIsCallerAdmin();
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isAuthenticated = !!identity;
   const isLoggingIn = loginStatus === 'logging-in';
-  const currentPath = routerState.location.pathname;
 
-  const handleAuth = async () => {
-    if (isAuthenticated) {
-      await clear();
-      queryClient.clear();
-      navigate({ to: '/' });
-    } else {
-      try {
-        await login();
-      } catch (error: unknown) {
-        const err = error as Error;
-        if (err?.message === 'User is already authenticated') {
-          await clear();
-          setTimeout(() => login(), 300);
-        }
-      }
-    }
+  const handleLogout = async () => {
+    await clear();
+    queryClient.clear();
+    navigate({ to: '/' });
+    setMobileMenuOpen(false);
   };
 
-  const navLinks = [
-    ...(isAuthenticated ? [{ label: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={16} /> }] : []),
-    ...(isAuthenticated ? [{ label: 'Register Member', path: '/register', icon: <UserPlus size={16} /> }] : []),
-    ...(isAdmin ? [{ label: 'Admin', path: '/admin', icon: <Shield size={16} /> }] : []),
-  ];
+  const handleLoginClick = () => {
+    navigate({ to: '/login' });
+    setMobileMenuOpen(false);
+  };
+
+  const isActive = (path: string) => location.pathname === path;
 
   return (
-    <header className="bg-navy-900 border-b border-gold-500/20 sticky top-0 z-50 shadow-lg">
+    <header className="sticky top-0 z-50 bg-navy-900 border-b border-navy-700 shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <button
             onClick={() => navigate({ to: '/' })}
-            className="flex items-center gap-2 hover:opacity-90 transition-opacity"
+            className="flex items-center gap-2.5 hover:opacity-90 transition-opacity"
           >
-            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-gold-500/20 border border-gold-500/40">
-              <Zap size={18} className="text-gold-400" />
+            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gold-500/20 border border-gold-500/40">
+              <Zap size={20} className="text-gold-400" />
             </div>
-            <div className="flex flex-col leading-none">
-              <span className="text-gold-400 font-bold text-lg tracking-wide">
-                Ray Infotech
+            <div className="flex flex-col items-start leading-none">
+              <span className="text-lg font-bold text-gold-400 tracking-widest" style={{ fontFamily: 'Poppins, sans-serif', letterSpacing: '0.12em' }}>
+                RAY INFOTECH
               </span>
-              <span className="text-navy-300 text-[10px] tracking-widest uppercase">
-                Matrix MLM
+              <span className="text-navy-400 text-[9px] tracking-[0.25em] uppercase mt-0.5">
+                Matrix MLM Platform
               </span>
             </div>
           </button>
 
-          {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => (
-              <button
-                key={link.path}
-                onClick={() => navigate({ to: link.path })}
-                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  currentPath === link.path
-                    ? 'bg-gold-500/20 text-gold-400'
-                    : 'text-navy-100 hover:bg-navy-700 hover:text-gold-300'
-                }`}
-              >
-                {link.icon}
-                {link.label}
-              </button>
-            ))}
-          </nav>
-
-          {/* Auth Button */}
-          <div className="hidden md:flex items-center gap-3">
-            <Button
-              onClick={handleAuth}
-              disabled={isLoggingIn}
-              variant={isAuthenticated ? 'outline' : 'default'}
-              size="sm"
-              className={isAuthenticated
-                ? 'border-gold-500/40 text-gold-300 hover:bg-gold-500/10 hover:text-gold-200'
-                : 'bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold border-0'
-              }
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center gap-2">
+            <button
+              onClick={() => navigate({ to: '/' })}
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                isActive('/')
+                  ? 'text-gold-400 bg-navy-700'
+                  : 'text-navy-200 hover:text-gold-400 hover:bg-navy-800'
+              }`}
             >
-              {isLoggingIn ? (
-                <span className="flex items-center gap-2">
-                  <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
-                  Logging in...
-                </span>
-              ) : isAuthenticated ? (
-                <span className="flex items-center gap-2"><LogOut size={16} /> Logout</span>
-              ) : (
-                <span className="flex items-center gap-2"><LogIn size={16} /> Login</span>
-              )}
-            </Button>
-          </div>
+              Home
+            </button>
+
+            {isAuthenticated && (
+              <>
+                <button
+                  onClick={() => navigate({ to: '/dashboard' })}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive('/dashboard')
+                      ? 'text-gold-400 bg-navy-700'
+                      : 'text-navy-200 hover:text-gold-400 hover:bg-navy-800'
+                  }`}
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  Dashboard
+                </button>
+                <button
+                  onClick={() => navigate({ to: '/register' })}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive('/register')
+                      ? 'text-gold-400 bg-navy-700'
+                      : 'text-navy-200 hover:text-gold-400 hover:bg-navy-800'
+                  }`}
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Register Member
+                </button>
+                <button
+                  onClick={() => navigate({ to: '/admin' })}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive('/admin')
+                      ? 'text-gold-400 bg-navy-700'
+                      : 'text-navy-200 hover:text-gold-400 hover:bg-navy-800'
+                  }`}
+                >
+                  <Shield className="h-4 w-4" />
+                  Admin
+                </button>
+              </>
+            )}
+
+            {/* Auth Button */}
+            {isAuthenticated ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLogout}
+                className="ml-2 border-navy-500 text-navy-200 hover:bg-navy-700 hover:text-white bg-transparent"
+              >
+                <LogOut className="h-4 w-4 mr-1.5" />
+                Logout
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={handleLoginClick}
+                disabled={isLoggingIn}
+                className="ml-2 bg-gold-500 hover:bg-gold-400 text-navy-900 font-semibold"
+              >
+                <LogIn className="h-4 w-4 mr-1.5" />
+                Member Login
+              </Button>
+            )}
+          </nav>
 
           {/* Mobile menu button */}
           <button
-            className="md:hidden text-navy-100 hover:text-gold-400 p-2"
-            onClick={() => setMobileOpen(!mobileOpen)}
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 rounded-md text-navy-200 hover:text-gold-400 hover:bg-navy-800 transition-colors"
+            aria-label="Toggle menu"
           >
-            {mobileOpen ? <X size={24} /> : <Menu size={24} />}
+            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
 
-        {/* Mobile Nav */}
-        {mobileOpen && (
-          <div className="md:hidden pb-4 border-t border-gold-500/20 mt-2 pt-3 space-y-1">
-            {navLinks.map((link) => (
-              <button
-                key={link.path}
-                onClick={() => { navigate({ to: link.path }); setMobileOpen(false); }}
-                className={`flex items-center gap-2 w-full px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  currentPath === link.path
-                    ? 'bg-gold-500/20 text-gold-400'
-                    : 'text-navy-100 hover:bg-navy-700 hover:text-gold-300'
-                }`}
-              >
-                {link.icon}
-                {link.label}
-              </button>
-            ))}
-            <div className="pt-2">
-              <Button
-                onClick={() => { handleAuth(); setMobileOpen(false); }}
-                disabled={isLoggingIn}
-                variant={isAuthenticated ? 'outline' : 'default'}
-                size="sm"
-                className={`w-full ${isAuthenticated
-                  ? 'border-gold-500/40 text-gold-300 hover:bg-gold-500/10'
-                  : 'bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold border-0'
-                }`}
-              >
-                {isLoggingIn ? 'Logging in...' : isAuthenticated ? 'Logout' : 'Login'}
-              </Button>
+        {/* Mobile Navigation */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-navy-700 py-3 space-y-1">
+            <button
+              onClick={() => { navigate({ to: '/' }); setMobileMenuOpen(false); }}
+              className={`w-full text-left px-4 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                isActive('/')
+                  ? 'text-gold-400 bg-navy-700'
+                  : 'text-navy-200 hover:text-gold-400 hover:bg-navy-800'
+              }`}
+            >
+              Home
+            </button>
+
+            {isAuthenticated && (
+              <>
+                <button
+                  onClick={() => { navigate({ to: '/dashboard' }); setMobileMenuOpen(false); }}
+                  className={`w-full text-left flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                    isActive('/dashboard')
+                      ? 'text-gold-400 bg-navy-700'
+                      : 'text-navy-200 hover:text-gold-400 hover:bg-navy-800'
+                  }`}
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  Dashboard
+                </button>
+                <button
+                  onClick={() => { navigate({ to: '/register' }); setMobileMenuOpen(false); }}
+                  className={`w-full text-left flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                    isActive('/register')
+                      ? 'text-gold-400 bg-navy-700'
+                      : 'text-navy-200 hover:text-gold-400 hover:bg-navy-800'
+                  }`}
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Register Member
+                </button>
+                <button
+                  onClick={() => { navigate({ to: '/admin' }); setMobileMenuOpen(false); }}
+                  className={`w-full text-left flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                    isActive('/admin')
+                      ? 'text-gold-400 bg-navy-700'
+                      : 'text-navy-200 hover:text-gold-400 hover:bg-navy-800'
+                  }`}
+                >
+                  <Shield className="h-4 w-4" />
+                  Admin
+                </button>
+              </>
+            )}
+
+            <div className="pt-2 px-4">
+              {isAuthenticated ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLogout}
+                  className="w-full border-navy-500 text-navy-200 hover:bg-navy-700 hover:text-white bg-transparent"
+                >
+                  <LogOut className="h-4 w-4 mr-1.5" />
+                  Logout
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={handleLoginClick}
+                  disabled={isLoggingIn}
+                  className="w-full bg-gold-500 hover:bg-gold-400 text-navy-900 font-semibold"
+                >
+                  <LogIn className="h-4 w-4 mr-1.5" />
+                  Member Login
+                </Button>
+              )}
             </div>
           </div>
         )}

@@ -20,15 +20,17 @@ export const UserProfile = IDL.Record({
 export const MemberId = IDL.Nat;
 export const Time = IDL.Int;
 export const TreeLevel = IDL.Nat;
+export const MatrixPosition = IDL.Nat;
 export const MLMTreePosition = IDL.Record({
   'memberId' : MemberId,
   'level' : TreeLevel,
-  'position' : IDL.Nat,
+  'position' : MatrixPosition,
 });
 export const MemberPublic = IDL.Record({
   'id' : IDL.Nat,
   'isCancelled' : IDL.Bool,
   'contactInfo' : IDL.Text,
+  'uplineId' : IDL.Opt(IDL.Nat),
   'name' : IDL.Text,
   'sponsorId' : IDL.Opt(IDL.Nat),
   'membershipDeadline' : Time,
@@ -41,6 +43,7 @@ export const MemberPublic = IDL.Record({
 });
 export const MemberRegistration = IDL.Record({
   'contactInfo' : IDL.Text,
+  'uplineId' : IDL.Opt(MemberId),
   'name' : IDL.Text,
   'sponsorId' : IDL.Opt(MemberId),
 });
@@ -56,6 +59,11 @@ export const idlService = IDL.Service({
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getMember' : IDL.Func([MemberId], [IDL.Opt(MemberPublic)], ['query']),
+  'getMemberRegistrationData' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Opt(UserProfile)],
+      ['query'],
+    ),
   'getSenderDownlines' : IDL.Func([MemberId], [IDL.Vec(MemberId)], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
@@ -88,15 +96,17 @@ export const idlFactory = ({ IDL }) => {
   const MemberId = IDL.Nat;
   const Time = IDL.Int;
   const TreeLevel = IDL.Nat;
+  const MatrixPosition = IDL.Nat;
   const MLMTreePosition = IDL.Record({
     'memberId' : MemberId,
     'level' : TreeLevel,
-    'position' : IDL.Nat,
+    'position' : MatrixPosition,
   });
   const MemberPublic = IDL.Record({
     'id' : IDL.Nat,
     'isCancelled' : IDL.Bool,
     'contactInfo' : IDL.Text,
+    'uplineId' : IDL.Opt(IDL.Nat),
     'name' : IDL.Text,
     'sponsorId' : IDL.Opt(IDL.Nat),
     'membershipDeadline' : Time,
@@ -109,6 +119,7 @@ export const idlFactory = ({ IDL }) => {
   });
   const MemberRegistration = IDL.Record({
     'contactInfo' : IDL.Text,
+    'uplineId' : IDL.Opt(MemberId),
     'name' : IDL.Text,
     'sponsorId' : IDL.Opt(MemberId),
   });
@@ -124,6 +135,11 @@ export const idlFactory = ({ IDL }) => {
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getMember' : IDL.Func([MemberId], [IDL.Opt(MemberPublic)], ['query']),
+    'getMemberRegistrationData' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Opt(UserProfile)],
+        ['query'],
+      ),
     'getSenderDownlines' : IDL.Func([MemberId], [IDL.Vec(MemberId)], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],

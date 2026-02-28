@@ -1,35 +1,117 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T19:47:33.887Z",
-  "summary": "The diff implements all three requirements: REQ-1 (backend RI-format unique member ID generation), REQ-2 (updated RegisterPage with validated form and success display), and REQ-3 (AdminPanel member ID column and React Query cache invalidation). Most acceptance criteria are met. One minor concern is the React Query cache invalidation after registration — the diff summary mentions it but does not show explicit invalidation code in useQueries.ts. However, the frontend-file-summaries.txt describes useRegisterMember as using React Query mutations, which typically include invalidation. Overall coverage is strong.",
+  "generatedAt": "2026-02-26T16:37:39.434Z",
+  "summary": "The diff implements most of the requested MLM member dashboard and admin panel features. The frontend pages (dashboard, admin panel, registration, login) are present and largely complete. The backend main.mo includes the data model, commission logic, and member management. However, several specific requirements have gaps: the member status fields (active/debarred/suspended/deleted) appear to use isCancelled boolean rather than the spec's enum; debar/suspend actions are referenced in the admin panel UI but the backend mutation hooks for debarring and suspending are not clearly evidenced; downline reassignment on delete/debar is not confirmed; and the admin panel lacks visible debar/suspend action buttons in the truncated diff. The login flow (REQ-7) redirects guests to stay on login page rather than routing to registration.",
   "missing_requirements": [
     {
-      "id": "REQ-3",
-      "requirement": "The admin panel React Query cache is invalidated after a new member is registered so the list reflects the latest data.",
-      "reason": "The diff does not show the useQueries.ts content in detail (only a summary description), so there is no direct evidence that the useRegisterMember mutation explicitly calls queryClient.invalidateQueries for the members list after a successful registration. The file summary describes the hook but does not confirm cache invalidation logic.",
+      "id": "REQ-1",
+      "requirement": "Member status must support active/debarred/suspended/deleted states as a multi-value enum",
+      "reason": "The Member type in backend/main.mo uses isCancelled: Bool field rather than a multi-value status enum (active/debarred/suspended/deleted) as specified.",
       "evidence": [
-        "frontend/src/hooks/useQueries.ts",
-        "frontend-file-summaries.txt"
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-1",
+      "requirement": "Payment status field named paymentStatus with pending/paid values",
+      "reason": "The member record uses joiningFeePaid: Bool rather than a paymentStatus field with pending/paid enum values as specified in the data model.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "requirement": "Admin can debar or suspend a member as distinct operations updating member status without removing the record",
+      "reason": "The admin panel file summary and truncated code mention only mark-paid and cancel actions. Debar and suspend as separate backend operations with corresponding frontend mutation hooks are not evidenced in the diff.",
+      "evidence": [
+        "frontend/src/pages/AdminPanel.tsx",
+        "frontend/src/hooks/useQueries.ts"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "requirement": "When a member is deleted or debarred, reassign their direct downline children to the removed member's upline",
+      "reason": "No evidence of downline reassignment logic in the truncated backend/main.mo or frontend hooks. The migration file only adds uplineId and does not implement reassignment.",
+      "evidence": [
+        "backend/main.mo",
+        "backend/migration.mo"
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "requirement": "Quick stats showing levels filled in addition to total downline count",
+      "reason": "Dashboard shows total earnings and downline count but the file summary and truncated DashboardPage.tsx do not mention levels filled as a displayed quick stat.",
+      "evidence": [
+        "frontend/src/pages/DashboardPage.tsx"
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "requirement": "Action buttons per member row to debar and suspend a member",
+      "reason": "The AdminPanel file summary mentions mark-paid and cancel actions only. Debar and suspend action buttons in the members table are not evidenced in the diff.",
+      "evidence": [
+        "frontend/src/pages/AdminPanel.tsx"
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "requirement": "Unregistered authenticated users are redirected to the registration page",
+      "reason": "LoginPage.tsx handles admin and user redirects but for guest role the comment states guest role stays on login page rather than being redirected to /register as specified.",
+      "evidence": [
+        "frontend/src/pages/LoginPage.tsx"
       ]
     }
   ],
   "hallucinated_features": [
     {
-      "description": "A migration module (backend/migration.mo) was added to migrate existing member records to include the new memberIdStr field.",
-      "reason": "The build request only asked to update registration logic to generate and store RI-format IDs. It did not request a migration module for existing data. While this is a reasonable implementation choice, it was not part of the specified requirements.",
+      "description": "RecruitmentDeadlineCard component with membership deadline countdown timer",
+      "reason": "The build request does not mention membership deadlines, countdown timers, or recruitment deadline cards anywhere in the requirements.",
+      "evidence": [
+        "frontend/src/components/RecruitmentDeadlineCard.tsx",
+        "frontend/src/utils/deadlineHelpers.ts",
+        "frontend/src/pages/DashboardPage.tsx"
+      ]
+    },
+    {
+      "description": "ProfileSetupModal for collecting name and contact info as a post-login step before platform access",
+      "reason": "The build request specifies Internet Identity login with role-based routing but does not include a post-login profile setup modal as a separate step.",
+      "evidence": [
+        "frontend/src/components/ProfileSetupModal.tsx",
+        "frontend/src/App.tsx"
+      ]
+    },
+    {
+      "description": "checkMembershipStatuses admin action with a Check Statuses refresh button in the admin panel",
+      "reason": "The build request does not specify any membership status check or batch refresh operation as an admin panel feature.",
+      "evidence": [
+        "frontend/src/pages/AdminPanel.tsx",
+        "frontend/src/hooks/useQueries.ts"
+      ]
+    },
+    {
+      "description": "Migration module for upgrading old actor state schema",
+      "reason": "The build request specifies building the system from scratch as Phase 1 and does not mention any data migration from a previous schema.",
       "evidence": [
         "backend/migration.mo"
       ]
     }
   ],
-  "confidence": 0.78,
+  "confidence": 0.62,
   "changed_files": [
     "backend/main.mo",
     "backend/migration.mo",
     "frontend-file-summaries.txt",
+    "frontend/src/App.tsx",
+    "frontend/src/components/AddMemberForm.tsx",
+    "frontend/src/components/CommissionHistoryTable.tsx",
+    "frontend/src/components/EarningsSummary.tsx",
     "frontend/src/components/MatrixTreeVisualization.tsx",
+    "frontend/src/components/PlatformStatistics.tsx",
+    "frontend/src/hooks/useQueries.ts",
     "frontend/src/pages/AdminPanel.tsx",
+    "frontend/src/pages/DashboardPage.tsx",
+    "frontend/src/pages/LoginPage.tsx",
     "frontend/src/pages/RegisterPage.tsx",
     "project_state.json"
   ]

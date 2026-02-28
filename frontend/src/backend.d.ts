@@ -9,9 +9,11 @@ export interface None {
 export type Option<T> = Some<T> | None;
 export interface MemberRegistration {
     contactInfo: string;
+    uplineId?: MemberId;
     name: string;
     sponsorId?: MemberId;
 }
+export type MatrixPosition = bigint;
 export type Time = bigint;
 export interface MemberRegistrationResult {
     id: MemberId;
@@ -21,6 +23,7 @@ export interface MemberPublic {
     id: bigint;
     isCancelled: boolean;
     contactInfo: string;
+    uplineId?: bigint;
     name: string;
     sponsorId?: bigint;
     membershipDeadline: Time;
@@ -35,7 +38,7 @@ export type MemberId = bigint;
 export interface MLMTreePosition {
     memberId: MemberId;
     level: TreeLevel;
-    position: bigint;
+    position: MatrixPosition;
 }
 export interface UserProfile {
     contactInfo: string;
@@ -53,6 +56,7 @@ export interface backendInterface {
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getMember(id: MemberId): Promise<MemberPublic | null>;
+    getMemberRegistrationData(user: Principal): Promise<UserProfile | null>;
     getSenderDownlines(senderId: MemberId): Promise<Array<MemberId>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;

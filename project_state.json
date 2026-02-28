@@ -1,26 +1,47 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "A membership management web app with a member joining form, admin dashboard integration, and unique member ID generation (e.g., RI 001920001).",
+  "summary": "MLM-style 3x3 matrix system (RAY INFOTECH) with 9-level payout structure, individual member dashboards, admin panel, dual registration, payment methods (manual + Stripe), and downline reassignment on member removal/debar.",
   "architectural_notes": [
-    "Unique member IDs follow the format RI XXXXXXXXX (e.g., RI 001920001)"
+    "3x3 matrix: each member recruits exactly 3 downline members, 9 levels deep",
+    "Level payouts: Level 1 = ₹2750 refund; Levels 2-9 use formula: (3^n) × ₹2750 × decreasing % (9% down to 1%)",
+    "When a member is deleted/debarred, their downline is reassigned to the next upline level to keep chain intact",
+    "Payment flow: member uploads proof → admin approves/rejects → account activated; OR admin manually marks as paid; OR Stripe online payment"
   ],
-  "known_issues": [],
+  "known_issues": [
+    "Build attempts failing due to complexity — plan is to build core member dashboard and admin panel first, then add payments and advanced features in follow-up"
+  ],
   "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-create-a-dedicated-member-joining-form-page-or-update-the-existing-registerpage-that-collects-name-mobile-number-email-and-optional-sponsor-id-on-successful-submission-display-the-newly-generated-unique-member-id-e-g-ri-001920001-to-the-user-the-form-must-validate-all-required-fields-before-submission",
-      "title": "Create a dedicated Member Joining Form page (or update the existing RegisterPage) that collects name, mobile number, email, and optional sponsor ID. On successful submission, display the newly generated unique member ID (e.g., RI 001920001) to the user. The form must validate all required fields before submission.",
+      "id": "feature-build-an-individual-member-dashboard-page-showing-a-a-summary-card-with-total-balance-and-fee-refund-status-b-a-per-level-commission-breakdown-table-levels-1-9-with-member-count-percentage-and-computed-earning-c-a-visual-3-3-matrix-tree-showing-their-downline-up-to-9-levels-with-member-name-status-on-each-node-and-empty-slot-indicators-d-quick-stats-total-downline-count-levels-filled",
+      "title": "Build an individual member dashboard page showing: (a) a summary card with total balance and fee refund status, (b) a per-level commission breakdown table (levels 1–9 with member count, percentage, and computed earning), (c) a visual 3×3 matrix tree showing their downline up to 9 levels with member name/status on each node and empty slot indicators, (d) quick stats (total downline count, levels filled).",
       "reqIds": [
-        "REQ-2"
+        "REQ-4"
       ],
       "version": 1
     },
     {
-      "id": "feature-ensure-that-upon-successful-member-registration-the-new-member-is-immediately-visible-in-the-admin-dashboard-adminpanel-member-list-without-requiring-a-manual-refresh-the-admin-table-must-display-the-newly-generated-unique-member-id-ri-format-as-a-column",
-      "title": "Ensure that upon successful member registration, the new member is immediately visible in the Admin Dashboard (AdminPanel) member list without requiring a manual refresh. The admin table must display the newly generated unique member ID (RI format) as a column.",
+      "id": "feature-build-an-admin-panel-page-with-a-a-searchable-paginated-members-table-showing-name-mobile-email-sponsor-status-payment-status-and-join-date-b-action-buttons-per-member-row-to-mark-fee-as-paid-debar-suspend-or-delete-a-member-c-platform-statistics-cards-total-members-total-fees-collected-total-refunds-issued-total-commissions-paid-d-an-add-member-form-for-admin-initiated-registration",
+      "title": "Build an admin panel page with: (a) a searchable, paginated members table showing name, mobile, email, sponsor, status, payment status, and join date, (b) action buttons per member row to mark fee as paid, debar, suspend, or delete a member, (c) platform statistics cards (total members, total fees collected, total refunds issued, total commissions paid), (d) an 'Add Member' form for admin-initiated registration.",
       "reqIds": [
-        "REQ-3"
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-a-self-registration-page-where-a-new-member-can-enter-their-name-mobile-number-email-and-sponsor-id-validate-the-sponsor-id-exists-in-the-system-and-submit-to-create-their-account-pending-payment-approval",
+      "title": "Build a self-registration page where a new member can enter their name, mobile number, email, and sponsor ID, validate the sponsor ID exists in the system, and submit to create their account pending payment approval.",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-the-member-login-flow-via-internet-identity-correctly-identifies-whether-the-authenticated-user-is-a-registered-member-or-admin-redirects-members-to-their-dashboard-redirects-admins-to-the-admin-panel-and-redirects-unregistered-users-to-the-registration-page",
+      "title": "Ensure the member login flow (via Internet Identity) correctly identifies whether the authenticated user is a registered member or admin, redirects members to their dashboard, redirects admins to the admin panel, and redirects unregistered users to the registration page.",
+      "reqIds": [
+        "REQ-7"
       ],
       "version": 1
     }
@@ -28,33 +49,67 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Create a member joining form",
+      "summary": "9-level MLM 3x3 matrix with joining fee ₹2750 and payout calculations per level (Level 1: fee refund, Levels 2-9: 9% down to 1%)",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-2",
-      "summary": "Automatically add new members to the admin dashboard upon joining",
+      "summary": "Individual member login pages with personalized dashboards showing earnings, downline tree, per-level amounts, and total balance",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-3",
-      "summary": "Generate a unique member ID for each new member (e.g., RI 001920001)",
+      "summary": "Admin panel to add/manage members, view all calculations, and control member status (omit/delete/debar/suspend)",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-4",
-      "summary": "Update the backend member registration logic to generate a unique member ID in the format 'RI' followed by a zero-padded 9-digit sequential number (e.g., RI 001920001). Store this formatted ID as part of the member record and return it upon successful registration.",
+      "summary": "Dual registration: admin-added members and self-registration by members",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Downline reassignment to next upline level when a member is removed or debarred",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Payment system: manual tracking (admin marks as paid), member payment proof upload with admin approval workflow, and Stripe online payments",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-7",
+      "summary": "Implement the backend data model and logic for the 3×3 matrix MLM system: store members with fields (id, name, mobile, email, sponsorId, uplineId, position in matrix, joinDate, status: active/debarred/suspended/deleted, paymentStatus: pending/paid), enforce a maximum of 3 direct downline slots per member, and auto-assign new members to the next available slot under their sponsor using breadth-first placement.",
       "reqIds": [
         "REQ-1"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-8",
+      "summary": "Implement backend commission calculation: joining fee is ₹2,750 per member. Level 1 (3 members): full fee refund of ₹2,750. Levels 2–9: calculate commissions as (number of members at that depth) × ₹2,750 × percentage (Level 2: 9%, Level 3: 8%, Level 4: 7%, Level 5: 6%, Level 6: 5%, Level 7: 4%, Level 8: 3%, Level 9: 1%). Expose a query to return per-level earnings and total balance for any given member.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-9",
+      "summary": "Implement backend member management operations: (a) admin can add a new member directly, (b) members can self-register with a sponsor ID, (c) admin can debar or suspend a member, (d) admin can delete a member. When a member is removed or debarred, reassign their direct downline children to the removed member's own upline, filling the vacated slot first.",
+      "reqIds": [
+        "REQ-3"
       ],
       "status": "pending"
     }
   ],
   "gameProjectType": "none",
-  "projectName": "Ray Infotech MLM",
+  "projectName": "RAY INFOTECH",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

@@ -1,17 +1,17 @@
 import Map "mo:core/Map";
+import Text "mo:core/Text";
+import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
 import List "mo:core/List";
-import Text "mo:core/Text";
-import Time "mo:core/Time";
-import Principal "mo:core/Principal";
 import Iter "mo:core/Iter";
 import Nat "mo:core/Nat";
+import Array "mo:core/Array";
 import Migration "migration";
-
+import Time "mo:core/Time";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
+import VarArray "mo:core/VarArray";
 
-// Automatically run migration if data structure changes between versions
 (with migration = Migration.run)
 actor {
   let accessControlState = AccessControl.initState();
@@ -26,27 +26,37 @@ actor {
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can get their profile");
+      Runtime.trap("Unauthorized: Only users with role 'user' can fetch their own profile");
     };
     userProfiles.get(caller);
   };
 
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
     if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own profile");
+      Runtime.trap("Unauthorized: Only admins can fetch other users' profiles");
     };
     userProfiles.get(user);
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can save profiles");
+      Runtime.trap("Unauthorized: Only users with role 'user' can save profiles");
     };
     userProfiles.add(caller, profile);
   };
 
+  public query ({ caller }) func getMemberRegistrationData(user : Principal) : async ?UserProfile {
+    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap(
+        "Unauthorized: Can only view your own registration data. Click the account icon on the right to switch between admin and user mode."
+      );
+    };
+    userProfiles.get(user);
+  };
+
   type MemberId = Nat;
   type TreeLevel = Nat;
+  type MatrixPosition = Nat;
 
   type Commission = {
     memberId : MemberId;
@@ -58,15 +68,47 @@ actor {
   type MLMTreePosition = {
     memberId : MemberId;
     level : TreeLevel;
-    position : Nat;
+    position : MatrixPosition;
   };
 
-  type Member = {
+  public type CommissionCalculationResult = {
+    totalCommissions : Nat;
+    levelCommissions : [LevelCommission];
+  };
+
+  public type LevelCommission = {
+    level : TreeLevel;
+    levelMembers : Nat;
+    commissionAmount : Nat;
+    levelPercentage : Nat;
+    totalLevelEarnings : Nat;
+  };
+
+  type DownlinePosition = {
+    memberId : MemberId;
+    position : MatrixPosition;
+    level : TreeLevel;
+  };
+
+  type DownlineSlot = {
+    level : TreeLevel;
+    index : Nat;
+    position : MatrixPosition;
+    isFilled : Bool;
+  };
+
+  type DownlinePositionInfo = {
+    position : MLMTreePosition;
+    pathToMember : [DownlinePosition];
+  };
+
+  public type Member = {
     id : MemberId;
-    memberIdStr : Text; // Store string formatted id
+    memberIdStr : Text;
     name : Text;
     contactInfo : Text;
     sponsorId : ?MemberId;
+    uplineId : ?MemberId;
     joiningFeePaid : Bool;
     feeRefunded : Bool;
     registrationTimestamp : Time.Time;
@@ -79,10 +121,11 @@ actor {
 
   public type MemberPublic = {
     id : Nat;
-    memberIdStr : Text; // Add string id to query result
+    memberIdStr : Text;
     name : Text;
     contactInfo : Text;
     sponsorId : ?Nat;
+    uplineId : ?Nat;
     joiningFeePaid : Bool;
     feeRefunded : Bool;
     registrationTimestamp : Time.Time;
@@ -96,12 +139,15 @@ actor {
     name : Text;
     contactInfo : Text;
     sponsorId : ?MemberId;
+    uplineId : ?MemberId;
   };
 
   public type MemberRegistrationResult = {
     id : MemberId;
     memberId : Text;
   };
+
+  public type MLMError = Text;
 
   let members = Map.empty<MemberId, Member>();
   var nextMemberId = 1;
@@ -126,9 +172,29 @@ actor {
     "RI " # paddedId;
   };
 
+  func persistNewMember(member : Member, uplineId : MemberId) {
+    members.add(member.id, member);
+
+    if (uplineId != member.id) {
+      switch (members.get(uplineId)) {
+        case (null) { Runtime.trap("Upline must exist already") };
+        case (?uplineRecord) {
+          let updatedDownlines = uplineRecord.directDownlines.concat([member.id]);
+          let updatedUpline = {
+            uplineRecord with
+            directDownlines = updatedDownlines;
+          };
+          members.add(uplineId, updatedUpline);
+        };
+      };
+    };
+  };
+
   public shared ({ caller }) func registerMember(registration : MemberRegistration) : async MemberRegistrationResult {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only registered users can register members");
+      Runtime.trap(
+        "Unauthorized: Only registered users can register members. Click the account icon on the right to switch between admin and user mode."
+      );
     };
 
     let name = registration.name;
@@ -137,9 +203,12 @@ actor {
     };
 
     let newMemberId = nextMemberId;
-    let uplineId = switch (registration.sponsorId) {
-      case (null) { newMemberId };
-      case (?id) { id };
+
+    let uplineId = switch (registration.sponsorId, registration.uplineId) {
+      case (null, null) { newMemberId };
+      case (null, ?uid) { uid };
+      case (?sid, null) { sid };
+      case (?_, ?uid) { uid };
     };
 
     if (uplineId != newMemberId and not members.containsKey(uplineId)) {
@@ -158,17 +227,17 @@ actor {
     };
 
     let newMatrixPosition = findNextMatrixSlot(uplineId, newMemberId);
-
     let currentTime = Time.now();
     let membershipDeadline = currentTime + threeDaysInNanoseconds;
     let memberIdStr = formatMemberId(newMemberId);
 
     let newMemberRecord : Member = {
       id = newMemberId;
-      memberIdStr; // Add formatted id to record
+      memberIdStr;
       name;
       contactInfo = registration.contactInfo;
       sponsorId = registration.sponsorId;
+      uplineId = registration.uplineId;
       joiningFeePaid = true;
       feeRefunded = false;
       registrationTimestamp = currentTime;
@@ -182,91 +251,9 @@ actor {
     persistNewMember(newMemberRecord, uplineId);
     nextMemberId += 1;
 
-    if (uplineId != newMemberId) {
-      processCommissionsAndRefunds(uplineId, newMatrixPosition);
-    };
-
     {
       id = newMemberId;
       memberId = memberIdStr;
-    };
-  };
-
-  public query ({ caller }) func getMember(id : MemberId) : async ?MemberPublic {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only registered users can view member details");
-    };
-    switch (members.get(id)) {
-      case (null) { null };
-      case (?record) {
-        ?toPublic(record);
-      };
-    };
-  };
-
-  public query ({ caller }) func listMembersByName() : async [MemberPublic] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only registered users can list members");
-    };
-    members.values().toArray().map(func(m) { toPublic(m) });
-  };
-
-  public query ({ caller }) func getSenderDownlines(senderId : MemberId) : async [MemberId] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only registered users can view downlines");
-    };
-
-    let idList = List.empty<MemberId>();
-
-    func traverse(memberId : MemberId) {
-      switch (members.get(memberId)) {
-        case (null) {};
-        case (?member) {
-          for (downlineId in member.directDownlines.values()) {
-            idList.add(downlineId);
-            traverse(downlineId);
-          };
-        };
-      };
-    };
-
-    traverse(senderId);
-    idList.toArray();
-  };
-
-  public shared ({ caller }) func markJoiningFeePaid(memberId : MemberId) : async () {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can mark joining fees as paid");
-    };
-    switch (members.get(memberId)) {
-      case (null) { Runtime.trap("Member not found: " # memberId.toText()) };
-      case (?record) {
-        members.add(memberId, { record with joiningFeePaid = true });
-      };
-    };
-  };
-
-  public shared ({ caller }) func checkMembershipStatuses() : async () {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can run status check");
-    };
-    checkAndExpireMembers();
-  };
-
-  func toPublic(record : Member) : MemberPublic {
-    {
-      id = record.id;
-      memberIdStr = record.memberIdStr;
-      name = record.name;
-      contactInfo = record.contactInfo;
-      sponsorId = record.sponsorId;
-      joiningFeePaid = record.joiningFeePaid;
-      feeRefunded = record.feeRefunded;
-      registrationTimestamp = record.registrationTimestamp;
-      matrixPosition = record.matrixPosition;
-      directDownlines = record.directDownlines;
-      membershipDeadline = record.membershipDeadline;
-      isCancelled = record.isCancelled;
     };
   };
 
@@ -309,67 +296,89 @@ actor {
     result;
   };
 
-  func persistNewMember(member : Member, uplineId : MemberId) {
-    members.add(member.id, member);
+  public query ({ caller }) func getMember(id : MemberId) : async ?MemberPublic {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap(
+        "Unauthorized: Only registered users can view member details. Click the account icon in the top right to switch user mode."
+      );
+    };
 
-    if (uplineId != member.id) {
-      switch (members.get(uplineId)) {
-        case (null) { Runtime.trap("Upline must exist already") };
-        case (?uplineRecord) {
-          let updatedDownlines = uplineRecord.directDownlines.concat([member.id]);
-          let updatedUpline = {
-            uplineRecord with
-            directDownlines = updatedDownlines;
+    switch (members.get(id)) {
+      case (null) { null };
+      case (?record) { ?toPublic(record) };
+    };
+  };
+
+  public query ({ caller }) func listMembersByName() : async [MemberPublic] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap(
+        "Unauthorized: Only registered users can list members. Click the account icon in the top right to switch user mode."
+      );
+    };
+
+    members.values().toArray().map(func(record) { toPublic(record) });
+  };
+
+  public query ({ caller }) func getSenderDownlines(senderId : MemberId) : async [MemberId] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap(
+        "Unauthorized: Only registered users can view downlines. Click the account icon in the top right to switch user mode."
+      );
+    };
+
+    let idList = List.empty<MemberId>();
+
+    func traverse(memberId : MemberId) {
+      switch (members.get(memberId)) {
+        case (null) {};
+        case (?member) {
+          for (downlineId in member.directDownlines.values()) {
+            idList.add(downlineId);
+            traverse(downlineId);
           };
-          members.add(uplineId, updatedUpline);
         };
+      };
+    };
+
+    traverse(senderId);
+    idList.toArray();
+  };
+
+  public shared ({ caller }) func markJoiningFeePaid(memberId : MemberId) : async () {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can mark joining fees as paid. Switch to admin mode in the top right menu.");
+    };
+
+    switch (members.get(memberId)) {
+      case (null) { Runtime.trap("Member not found: " # memberId.toText()) };
+      case (?record) {
+        members.add(memberId, { record with joiningFeePaid = true });
       };
     };
   };
 
-  func processCommissionsAndRefunds(uplineId : MemberId, _newMemberPosition : MLMTreePosition) {
-    switch (members.get(uplineId)) {
-      case (null) { Runtime.trap("Upline must exist") };
-      case (?uplineRecord) {
-        if (not uplineRecord.feeRefunded and uplineRecord.directDownlines.size() == 3) {
-          let updatedUpline = {
-            uplineRecord with
-            feeRefunded = true;
-          };
-          members.add(uplineId, updatedUpline);
-        };
-      };
+  public shared ({ caller }) func checkMembershipStatuses() : async () {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can run status check. Switch to admin mode in the top right menu.");
     };
+    checkAndExpireMembers();
+  };
 
-    var currentId = uplineId;
-    var depth = 1;
-
-    label commissionLoop while (depth <= 9) {
-      switch (members.get(currentId)) {
-        case (null) { break commissionLoop };
-        case (?currentMember) {
-          if (depth >= 2 and currentMember.feeRefunded) {
-            let commissionPercent = 10 - depth;
-            let commissionAmount = (2750 * commissionPercent) / 100;
-            let newCommission : Commission = {
-              memberId = currentId;
-              amount = commissionAmount;
-              level = depth;
-              timestamp = Time.now();
-            };
-            let updatedCommissions = currentMember.commissions.concat([newCommission]);
-            members.add(currentId, { currentMember with commissions = updatedCommissions });
-          };
-
-          switch (currentMember.sponsorId) {
-            case (null) { break commissionLoop };
-            case (?sponsorId) {
-              currentId := sponsorId;
-              depth += 1;
-            };
-          };
-        };
-      };
+  func toPublic(record : Member) : MemberPublic {
+    {
+      id = record.id;
+      memberIdStr = record.memberIdStr;
+      name = record.name;
+      contactInfo = record.contactInfo;
+      sponsorId = record.sponsorId;
+      uplineId = record.uplineId;
+      joiningFeePaid = record.joiningFeePaid;
+      feeRefunded = record.feeRefunded;
+      registrationTimestamp = record.registrationTimestamp;
+      matrixPosition = record.matrixPosition;
+      directDownlines = record.directDownlines;
+      membershipDeadline = record.membershipDeadline;
+      isCancelled = record.isCancelled;
     };
   };
 
@@ -380,7 +389,8 @@ actor {
       if (not member.isCancelled and currentTime > member.membershipDeadline) {
         if (member.directDownlines.size() < 3) {
           let updatedMember = {
-            member with isCancelled = true
+            member with
+            isCancelled = true;
           };
           members.add(id, updatedMember);
         };

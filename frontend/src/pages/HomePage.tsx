@@ -3,7 +3,7 @@ import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, TrendingUp, Gift, Shield, ChevronRight, Star, Zap } from 'lucide-react';
+import { Users, TrendingUp, Gift, Shield, ChevronRight, Star, Zap, LogIn } from 'lucide-react';
 
 // Level 0: Fee Refund on filling 3 direct downlines
 // Level 1: 9% of total collection at Level 1
@@ -96,9 +96,8 @@ const commissionLevels = [
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const { identity, login, loginStatus } = useInternetIdentity();
+  const { identity } = useInternetIdentity();
   const isAuthenticated = !!identity;
-  const isLoggingIn = loginStatus === 'logging-in';
 
   return (
     <div className="bg-background">
@@ -119,8 +118,8 @@ export default function HomePage() {
                     <Zap size={28} className="text-gold-400" />
                   </div>
                   <div className="flex flex-col items-start leading-none">
-                    <span className="text-4xl font-bold text-gold-400 tracking-tight" style={{ fontFamily: 'Poppins, sans-serif' }}>
-                      Ray Infotech
+                    <span className="text-4xl font-bold text-gold-400 tracking-widest" style={{ fontFamily: 'Poppins, sans-serif', letterSpacing: '0.12em' }}>
+                      RAY INFOTECH
                     </span>
                     <span className="text-navy-300 text-xs tracking-[0.3em] uppercase mt-1">
                       Matrix MLM Platform
@@ -137,7 +136,7 @@ export default function HomePage() {
               <span className="text-gold-400">Grow Your Income</span>
             </h1>
             <p className="text-navy-200 text-lg sm:text-xl max-w-2xl mx-auto mb-8 leading-relaxed">
-              Join Ray Infotech's 3×9 Matrix MLM with just ₹2,750. Get your joining fee refunded on your first success, then earn commissions from 9% down to 1% across 9 levels.
+              Join RAY INFOTECH's 3×9 Matrix MLM with just ₹2,750. Get your joining fee refunded on your first success, then earn commissions from 9% down to 1% across 9 levels.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               {isAuthenticated ? (
@@ -159,15 +158,24 @@ export default function HomePage() {
                   </Button>
                 </>
               ) : (
-                <Button
-                  onClick={login}
-                  disabled={isLoggingIn}
-                  size="lg"
-                  className="bg-gold-500 hover:bg-gold-600 text-navy-900 font-bold text-base px-10 border-0"
-                >
-                  {isLoggingIn ? 'Logging in...' : 'Get Started — Login'}
-                  <ChevronRight size={18} className="ml-1" />
-                </Button>
+                <>
+                  <Button
+                    onClick={() => navigate({ to: '/login' })}
+                    size="lg"
+                    className="bg-gold-500 hover:bg-gold-600 text-navy-900 font-bold text-base px-10 border-0"
+                  >
+                    <LogIn size={18} className="mr-2" />
+                    Member Login
+                  </Button>
+                  <Button
+                    onClick={() => navigate({ to: '/register' })}
+                    size="lg"
+                    variant="outline"
+                    className="border-gold-500/40 text-gold-300 hover:bg-gold-500/10 text-base px-8"
+                  >
+                    Register as Member <ChevronRight size={18} className="ml-1" />
+                  </Button>
+                </>
               )}
             </div>
           </div>
@@ -256,27 +264,29 @@ export default function HomePage() {
               },
               {
                 step: '02',
-                title: 'Recruit 3 Members',
-                desc: 'Refer 3 people to join under you. Once all 3 slots are filled, your ₹2,750 is refunded.',
+                title: 'Build Your Network',
+                desc: 'Recruit 3 direct members to fill your matrix slots and get your fee refunded.',
                 icon: <Users size={28} />,
               },
               {
                 step: '03',
                 title: 'Earn Commissions',
-                desc: 'Earn 9% to 1% commissions on total collection as your downline grows across 9 levels of the matrix.',
+                desc: 'Earn commissions from 9% down to 1% as your downline network grows across 9 levels.',
                 icon: <TrendingUp size={28} />,
               },
             ].map((item) => (
-              <Card key={item.step} className="bg-card border-border">
+              <Card key={item.step} className="bg-card border border-gold-500/10 hover:border-gold-500/30 transition-colors">
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
-                    <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gold-500/15 flex items-center justify-center text-gold-400">
-                      {item.icon}
+                    <div className="flex-shrink-0">
+                      <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gold-500/15 border border-gold-500/30">
+                        <span className="text-gold-400">{item.icon}</span>
+                      </div>
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-gold-500 mb-1">STEP {item.step}</div>
-                      <h3 className="text-lg font-semibold text-foreground mb-2">{item.title}</h3>
-                      <p className="text-muted-foreground text-sm leading-relaxed">{item.desc}</p>
+                      <div className="text-xs text-gold-500/60 font-mono font-bold mb-1">STEP {item.step}</div>
+                      <h3 className="text-base font-bold text-foreground mb-2">{item.title}</h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -286,23 +296,43 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CTA */}
-      {!isAuthenticated && (
-        <section className="py-16 bg-navy-900">
-          <div className="max-w-2xl mx-auto px-4 text-center">
-            <h2 className="text-3xl font-bold text-white mb-4">Ready to Start Earning?</h2>
-            <p className="text-navy-200 mb-8">Join thousands of members building their financial future with Ray Infotech.</p>
+      {/* CTA Section */}
+      <section className="py-16 bg-navy-900">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl font-bold text-white mb-4">Ready to Start Earning?</h2>
+          <p className="text-navy-200 mb-8 text-lg">
+            Join thousands of members already growing their income with RAY INFOTECH's Matrix MLM.
+          </p>
+          {isAuthenticated ? (
             <Button
-              onClick={login}
-              disabled={isLoggingIn}
+              onClick={() => navigate({ to: '/register' })}
               size="lg"
               className="bg-gold-500 hover:bg-gold-600 text-navy-900 font-bold text-base px-10 border-0"
             >
-              {isLoggingIn ? 'Logging in...' : 'Login to Get Started'}
+              Register a Member <ChevronRight size={18} className="ml-2" />
             </Button>
-          </div>
-        </section>
-      )}
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button
+                onClick={() => navigate({ to: '/login' })}
+                size="lg"
+                className="bg-gold-500 hover:bg-gold-600 text-navy-900 font-bold text-base px-10 border-0"
+              >
+                <LogIn size={18} className="mr-2" />
+                Member Login
+              </Button>
+              <Button
+                onClick={() => navigate({ to: '/register' })}
+                size="lg"
+                variant="outline"
+                className="border-gold-500/40 text-gold-300 hover:bg-gold-500/10 text-base px-8"
+              >
+                Register as Member <ChevronRight size={18} className="ml-1" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

@@ -91,9 +91,11 @@ export class ExternalBlob {
 }
 export interface MemberRegistration {
     contactInfo: string;
+    uplineId?: MemberId;
     name: string;
     sponsorId?: MemberId;
 }
+export type MatrixPosition = bigint;
 export type Time = bigint;
 export interface MemberRegistrationResult {
     id: MemberId;
@@ -103,6 +105,7 @@ export interface MemberPublic {
     id: bigint;
     isCancelled: boolean;
     contactInfo: string;
+    uplineId?: bigint;
     name: string;
     sponsorId?: bigint;
     membershipDeadline: Time;
@@ -117,7 +120,7 @@ export type MemberId = bigint;
 export interface MLMTreePosition {
     memberId: MemberId;
     level: TreeLevel;
-    position: bigint;
+    position: MatrixPosition;
 }
 export interface UserProfile {
     contactInfo: string;
@@ -136,6 +139,7 @@ export interface backendInterface {
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getMember(id: MemberId): Promise<MemberPublic | null>;
+    getMemberRegistrationData(user: Principal): Promise<UserProfile | null>;
     getSenderDownlines(senderId: MemberId): Promise<Array<MemberId>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
@@ -229,6 +233,20 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.getMember(arg0);
             return from_candid_opt_n6(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getMemberRegistrationData(arg0: Principal): Promise<UserProfile | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getMemberRegistrationData(arg0);
+                return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getMemberRegistrationData(arg0);
+            return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
         }
     }
     async getSenderDownlines(arg0: MemberId): Promise<Array<MemberId>> {
@@ -349,6 +367,7 @@ function from_candid_record_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint
     id: bigint;
     isCancelled: boolean;
     contactInfo: string;
+    uplineId: [] | [bigint];
     name: string;
     sponsorId: [] | [bigint];
     membershipDeadline: _Time;
@@ -362,6 +381,7 @@ function from_candid_record_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint
     id: bigint;
     isCancelled: boolean;
     contactInfo: string;
+    uplineId?: bigint;
     name: string;
     sponsorId?: bigint;
     membershipDeadline: Time;
@@ -376,6 +396,7 @@ function from_candid_record_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint
         id: value.id,
         isCancelled: value.isCancelled,
         contactInfo: value.contactInfo,
+        uplineId: record_opt_to_undefined(from_candid_opt_n9(_uploadFile, _downloadFile, value.uplineId)),
         name: value.name,
         sponsorId: record_opt_to_undefined(from_candid_opt_n9(_uploadFile, _downloadFile, value.sponsorId)),
         membershipDeadline: value.membershipDeadline,
@@ -407,15 +428,18 @@ function to_candid_UserRole_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint
 }
 function to_candid_record_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     contactInfo: string;
+    uplineId?: MemberId;
     name: string;
     sponsorId?: MemberId;
 }): {
     contactInfo: string;
+    uplineId: [] | [_MemberId];
     name: string;
     sponsorId: [] | [_MemberId];
 } {
     return {
         contactInfo: value.contactInfo,
+        uplineId: value.uplineId ? candid_some(value.uplineId) : candid_none(),
         name: value.name,
         sponsorId: value.sponsorId ? candid_some(value.sponsorId) : candid_none()
     };

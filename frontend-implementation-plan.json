@@ -1,53 +1,128 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Member Joining Form with Admin Dashboard Integration and Unique Member ID",
+  "title": "Build core MLM member dashboard and admin panel (Phase 1) - Frontend",
   "requirements": [
     {
-      "id": "REQ-2",
-      "summary": "Create a Member Joining Form that collects registration details and displays the newly generated unique member ID (RI format) upon successful submission",
+      "id": "REQ-4",
+      "summary": "Build individual member dashboard page with balance summary, commission breakdown table, visual 3×3 matrix tree, and quick stats",
       "acceptanceCriteria": [
-        "The joining form displays input fields for name, mobile, email, and optional sponsor ID.",
-        "Validation errors are shown for missing or invalid required fields.",
-        "On successful registration, the new unique member ID is displayed prominently to the user.",
-        "The form is accessible via the app navigation."
+        "Dashboard displays total earnings and fee refund status",
+        "Commission table shows all 9 levels with correct values",
+        "Matrix tree renders up to 9 levels with member cards and empty slots",
+        "Quick stats reflect current downline count"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/RegisterPage.tsx",
+          "path": "frontend/src/pages/DashboardPage.tsx",
           "operation": "modify",
-          "description": "Update the RegisterPage to display the newly generated unique member ID (from MemberRegistrationResult.memberIdStr) in the RI format prominently after successful registration. Show the ID in a success card or modal with clear formatting. Ensure the form validates all required fields (name, mobile, email) before submission and displays validation errors inline. The form already collects name, mobile, email, and optional sponsor ID per the existing structure."
+          "description": "Enhance the existing dashboard to fetch and display per-level commission breakdown (levels 1-9 with member count, percentage, and computed earning) using backend methods. Add a summary card showing total balance and fee refund status. Ensure the matrix tree visualization displays up to 9 levels with member name/status on each node and empty slot indicators. Display quick stats including total downline count and levels filled. Use the authorization component to ensure only authenticated users with user or admin role can access this page."
+        },
+        {
+          "path": "frontend/src/components/EarningsSummary.tsx",
+          "operation": "modify",
+          "description": "Update the earnings summary component to display total balance prominently and clearly indicate fee refund status (whether the Level 1 refund of ₹2,750 has been received). Format currency amounts using Indian Rupee notation."
+        },
+        {
+          "path": "frontend/src/components/CommissionHistoryTable.tsx",
+          "operation": "modify",
+          "description": "Enhance the commission history table to display all 9 levels with columns for level number, member count at that level, commission percentage (9% for Level 2, 8% for Level 3, down to 1% for Level 9), and computed earning (count × ₹2,750 × percentage). Level 1 should show fee refund logic instead of percentage. Add totals row at the bottom."
+        },
+        {
+          "path": "frontend/src/components/MatrixTreeVisualization.tsx",
+          "operation": "modify",
+          "description": "Ensure the matrix tree visualization supports rendering up to 9 depth levels for a 3×3 matrix structure. Display member cards showing name and status (active/debarred/suspended/deleted) with appropriate visual indicators. Show empty slot placeholders for unfilled positions. Implement horizontal scrolling or responsive layout to handle the tree width at deeper levels."
         },
         {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Verify the useRegisterMember mutation returns MemberRegistrationResult containing both id and memberIdStr fields. Ensure the mutation properly exposes the memberIdStr field (the RI-formatted ID) to consuming components. Update type definitions if necessary to reflect the backend interface signature."
+          "description": "Add or enhance query hooks to fetch commission calculations per level (1-9) and total balance for the authenticated member. Create hooks to recursively fetch downline members up to 9 levels deep for tree visualization. Ensure proper error handling and loading states."
         }
       ]
     },
     {
-      "id": "REQ-3",
-      "summary": "Ensure newly registered members appear immediately in the Admin Dashboard member list with their unique RI-format member ID displayed as a column",
+      "id": "REQ-5",
+      "summary": "Build admin panel page with searchable/paginated members table, action buttons, platform statistics, and Add Member form",
       "acceptanceCriteria": [
-        "A newly registered member appears in the admin panel member list upon their next load or after triggering a refresh.",
-        "The admin member table includes a column showing each member's unique RI-format ID.",
-        "The admin panel React Query cache is invalidated after a new member is registered so the list reflects the latest data."
+        "Members table is searchable by name or ID and paginated",
+        "Admin can mark payment as paid from the table row",
+        "Admin can debar, suspend, or delete any member from the table row",
+        "Platform statistics cards update to reflect current data",
+        "Add Member form submits and places the new member in the matrix"
       ],
       "file_operations": [
         {
           "path": "frontend/src/pages/AdminPanel.tsx",
           "operation": "modify",
-          "description": "Add a new column to the admin member table displaying the memberIdStr field (the RI-formatted unique member ID) for each member. Position this column early in the table (e.g., after the row number or as the first data column) so it is prominently visible. Update the table headers and cell rendering logic to include this new column. Ensure the column is searchable/sortable if those features exist."
+          "description": "Enhance the admin panel to display a searchable, paginated members table showing name, mobile, email, sponsor, status (active/debarred/suspended/deleted), payment status (pending/paid), and join date. Add action buttons per row to: mark joining fee as paid (using markJoiningFeePaid mutation), debar member, suspend member, and delete member. Implement client-side search filtering by name or member ID. Add pagination controls (10-20 members per page). Use the authorization component to restrict access to admin role only; show AccessDeniedScreen for non-admin users. Verify the component's usage instructions before implementing."
         },
+        {
+          "path": "frontend/src/components/PlatformStatistics.tsx",
+          "operation": "modify",
+          "description": "Update platform statistics to display: total members count, total fees collected (count of paid members × ₹2,750), total refunds issued (count of members with 3+ direct downlines × ₹2,750), and total commissions paid (sum of all level 2-9 commissions across all members). Fetch all members data and compute these metrics on the frontend. Add loading skeletons and error states."
+        },
+        {
+          "path": "frontend/src/components/AddMemberForm.tsx",
+          "operation": "create",
+          "description": "Create a form component for admin-initiated member registration. Include fields for name, mobile number, email, and sponsor ID (optional for admin-added members). Validate all inputs before submission. Use the registerMember mutation to submit the form. On success, display a confirmation message with the assigned member ID and matrix position. On error, show validation feedback. Reset form after successful submission."
+        },
+        {
+          "path": "frontend/src/pages/AdminPanel.tsx",
+          "operation": "modify",
+          "description": "Integrate the AddMemberForm component into the admin panel page, placing it in a modal or collapsible section accessible via an 'Add Member' button. Ensure the form submission triggers a refetch of the members list to reflect the new member immediately."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Add mutation hooks for admin actions: markJoiningFeePaid (mark payment status as paid for a member), debarMember, suspendMember, and deleteMember. Each mutation should invalidate the members list query on success to update the table. Add proper error handling with user-friendly error messages."
+        }
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "summary": "Build self-registration page where new members enter details and sponsor ID, with validation and pending payment confirmation",
+      "acceptanceCriteria": [
+        "Registration form validates all required fields",
+        "Sponsor ID is validated against existing members before submission",
+        "Successful registration shows a confirmation message and pending payment status",
+        "Invalid sponsor ID shows a clear error message"
+      ],
+      "file_operations": [
         {
           "path": "frontend/src/pages/RegisterPage.tsx",
           "operation": "modify",
-          "description": "After successful member registration via useRegisterMember mutation, invalidate the React Query cache for the 'members' query key (used by AdminPanel to list all members) so that the admin panel reflects the newly registered member immediately upon next load. Use queryClient.invalidateQueries(['members']) in the onSuccess callback of the mutation."
+          "description": "Enhance the registration page to collect name, mobile number, email, and sponsor ID. Add client-side validation for all required fields (non-empty name, valid mobile format, valid email format, numeric sponsor ID). Before submission, validate that the sponsor ID exists by querying the backend (use getMember). Display a clear error message if sponsor ID is invalid or not found. On successful registration via registerMember mutation, show a confirmation message with the assigned member ID and a notice that payment status is pending. Redirect to login or dashboard after a short delay."
         },
         {
-          "path": "frontend/src/components/Header.tsx",
+          "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Ensure the 'Register Member' navigation link is visible and accessible to users with appropriate roles (admin or authenticated users). Verify the link correctly routes to the RegisterPage so users can access the joining form via app navigation."
+          "description": "Ensure the registerMember mutation hook properly handles the MemberRegistration input (name, contactInfo for mobile/email, sponsorId). Add error handling for invalid sponsor ID with a user-friendly error message. On success, return the MemberRegistrationResult containing the assigned member ID."
+        }
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "summary": "Ensure member login flow via Internet Identity correctly routes members to dashboard, admins to admin panel, and unregistered users to registration",
+      "acceptanceCriteria": [
+        "Authenticated members land on their personal dashboard",
+        "Authenticated admins land on the admin panel",
+        "Unregistered authenticated users are prompted to register"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/LoginPage.tsx",
+          "operation": "modify",
+          "description": "Update the login page to implement the routing logic after successful Internet Identity authentication. Query the backend to check if the authenticated user is a registered member (using getCallerUserProfile or getMemberRegistrationData). If the user is an admin (check via isCallerAdmin or getCallerUserRole), redirect to /admin. If the user is a registered member, redirect to /dashboard. If the user is authenticated but not registered (no profile or member record), redirect to /register with a prompt to complete registration. Use the authorization component to handle role checks. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Ensure the router configuration includes all required routes: /login, /register, /dashboard (protected, user role), and /admin (protected, admin role). Add route guards using the authorization component to enforce role-based access. Ensure the ProfileSetupModal only appears for authenticated users who lack a user profile, and does not interfere with the registration flow for new members."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Add a query hook to check user role (getCallerUserRole) and admin status (isCallerAdmin). Ensure these hooks are used in the login flow to determine the correct redirect target. Cache the results appropriately to avoid repeated backend calls."
         }
       ]
     }

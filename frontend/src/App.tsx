@@ -1,29 +1,87 @@
-import { RouterProvider, createRouter, createRootRoute, createRoute, Outlet } from '@tanstack/react-router';
+import React from 'react';
+import {
+  createRouter,
+  createRoute,
+  createRootRoute,
+  RouterProvider,
+  Outlet,
+  redirect,
+} from '@tanstack/react-router';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from '@/components/ui/sonner';
-import Layout from './components/Layout';
+import { useInternetIdentity } from './hooks/useInternetIdentity';
+import { useGetCallerUserProfile } from './hooks/useQueries';
+import Header from './components/Header';
+import Footer from './components/Footer';
+import ProfileSetupModal from './components/ProfileSetupModal';
 import HomePage from './pages/HomePage';
+import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import AdminPanel from './pages/AdminPanel';
-import ProfileSetupModal from './components/ProfileSetupModal';
 
-const rootRoute = createRootRoute({
-  component: () => (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-      <Layout>
-        <Outlet />
-      </Layout>
-      <ProfileSetupModal />
-      <Toaster richColors position="top-right" />
-    </ThemeProvider>
-  ),
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      retry: 1,
+    },
+  },
 });
 
-const homeRoute = createRoute({
+// ─── Layout ───────────────────────────────────────────────────────────────────
+
+function AppLayout() {
+  const { identity, isInitializing } = useInternetIdentity();
+  const isAuthenticated = !!identity;
+  const currentPath = window.location.pathname;
+  const isLoginPage = currentPath === '/login';
+  const isRegisterPage = currentPath === '/register';
+
+  const {
+    data: userProfile,
+    isLoading: profileLoading,
+    isFetched: profileFetched,
+  } = useGetCallerUserProfile();
+
+  const showProfileSetup =
+    isAuthenticated &&
+    !isInitializing &&
+    !profileLoading &&
+    profileFetched &&
+    userProfile === null &&
+    !isLoginPage &&
+    !isRegisterPage;
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <Header />
+      <main className="flex-1">
+        <Outlet />
+      </main>
+      <Footer />
+      {showProfileSetup && <ProfileSetupModal />}
+    </div>
+  );
+}
+
+// ─── Routes ───────────────────────────────────────────────────────────────────
+
+const rootRoute = createRootRoute({
+  component: AppLayout,
+});
+
+const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: HomePage,
+});
+
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/login',
+  component: LoginPage,
 });
 
 const registerRoute = createRoute({
@@ -44,7 +102,13 @@ const adminRoute = createRoute({
   component: AdminPanel,
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, registerRoute, dashboardRoute, adminRoute]);
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  loginRoute,
+  registerRoute,
+  dashboardRoute,
+  adminRoute,
+]);
 
 const router = createRouter({ routeTree });
 
@@ -54,6 +118,15 @@ declare module '@tanstack/react-router' {
   }
 }
 
+// ─── App ──────────────────────────────────────────────────────────────────────
+
 export default function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+        <RouterProvider router={router} />
+        <Toaster richColors position="top-right" />
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
 }

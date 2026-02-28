@@ -1,329 +1,345 @@
-import { useState } from 'react';
-import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { useNavigate } from '@tanstack/react-router';
-import { useListMembers, useIsCallerAdmin, useMarkJoiningFeePaid } from '../hooks/useQueries';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import React, { useState, useMemo } from 'react';
+import { useListMembers, useMarkJoiningFeePaid, useCheckMembershipStatuses, useRegisterMember } from '../hooks/useQueries';
+import { MemberPublic } from '../backend';
+import PlatformStatistics from '../components/PlatformStatistics';
+import AddMemberForm from '../components/AddMemberForm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/ui/table';
-import { toast } from 'sonner';
-import { Shield, Users, Search, RefreshCw, CheckCircle, Clock, LogIn, AlertTriangle, XCircle, CalendarClock, IdCard } from 'lucide-react';
-import type { MemberPublic } from '../backend';
-import PlatformStatistics from '../components/PlatformStatistics';
-import { formatDeadlineTimestamp, computeDeadlineStatus, type DeadlineStatus } from '../utils/deadlineHelpers';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Search, UserPlus, CheckCircle, RefreshCw, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 
-const ITEMS_PER_PAGE = 10;
+const PAGE_SIZE = 15;
 
-function DeadlineStatusBadge({ status }: { status: DeadlineStatus }) {
-  if (status === 'Met') {
-    return (
-      <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-xs whitespace-nowrap">
-        <CheckCircle size={10} className="mr-1" /> Met
-      </Badge>
-    );
-  }
-  if (status === 'Cancelled') {
-    return (
-      <Badge className="bg-destructive/20 text-destructive border-destructive/30 text-xs whitespace-nowrap">
-        <XCircle size={10} className="mr-1" /> Cancelled
-      </Badge>
-    );
-  }
-  return (
-    <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs whitespace-nowrap">
-      <Clock size={10} className="mr-1" /> Active
-    </Badge>
-  );
+function formatDate(timestamp: bigint): string {
+  const ms = Number(timestamp) / 1_000_000;
+  return new Date(ms).toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
 }
 
 export default function AdminPanel() {
-  const { identity, login, loginStatus } = useInternetIdentity();
-  const navigate = useNavigate();
-  const { data: isAdmin, isLoading: adminLoading } = useIsCallerAdmin();
-  const { data: members, isLoading, refetch, isFetching } = useListMembers();
-  const markFeePaid = useMarkJoiningFeePaid();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
 
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
+  const { data: allMembers = [], isLoading: membersLoading } = useListMembers();
+  const markPaidMutation = useMarkJoiningFeePaid();
+  const checkStatusMutation = useCheckMembershipStatuses();
 
-  const isAuthenticated = !!identity;
-  const isLoggingIn = loginStatus === 'logging-in';
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center px-4">
-        <Card className="bg-card border-border max-w-md w-full text-center">
-          <CardContent className="p-8">
-            <LogIn className="text-gold-400 mx-auto mb-4" size={40} />
-            <h2 className="text-xl font-bold text-foreground mb-2">Login Required</h2>
-            <p className="text-muted-foreground mb-6">Please login to access the admin panel.</p>
-            <Button onClick={login} disabled={isLoggingIn} className="bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold border-0">
-              {isLoggingIn ? 'Logging in...' : 'Login'}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+  const filteredMembers = useMemo(() => {
+    if (!searchQuery.trim()) return allMembers;
+    const q = searchQuery.toLowerCase();
+    return allMembers.filter(
+      (m) =>
+        m.name.toLowerCase().includes(q) ||
+        m.id.toString().includes(q) ||
+        m.memberIdStr.toLowerCase().includes(q) ||
+        m.contactInfo.toLowerCase().includes(q)
     );
-  }
+  }, [allMembers, searchQuery]);
 
-  if (adminLoading) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="space-y-4">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-64 w-full" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center px-4">
-        <Card className="bg-card border-border max-w-md w-full text-center">
-          <CardContent className="p-8">
-            <div className="w-16 h-16 rounded-full bg-destructive/15 flex items-center justify-center mx-auto mb-4">
-              <AlertTriangle className="text-destructive" size={32} />
-            </div>
-            <h2 className="text-xl font-bold text-foreground mb-2">Access Denied</h2>
-            <p className="text-muted-foreground mb-6">
-              This area is restricted to Ray Infotech administrators only.
-            </p>
-            <Button onClick={() => navigate({ to: '/' })} variant="outline" className="border-border">
-              Return to Home
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  const filteredMembers = (members || []).filter((m) =>
-    m.name.toLowerCase().includes(search.toLowerCase()) ||
-    m.id.toString().includes(search) ||
-    m.memberIdStr.toLowerCase().includes(search.toLowerCase())
+  const totalPages = Math.max(1, Math.ceil(filteredMembers.length / PAGE_SIZE));
+  const paginatedMembers = filteredMembers.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
   );
 
-  const totalPages = Math.ceil(filteredMembers.length / ITEMS_PER_PAGE);
-  const paginatedMembers = filteredMembers.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1);
+  };
 
-  const handleMarkPaid = async (member: MemberPublic) => {
+  const handleMarkPaid = async (memberId: bigint) => {
     try {
-      await markFeePaid.mutateAsync(member.id);
-      toast.success(`Joining fee marked as paid for ${member.name}`);
-    } catch {
-      toast.error('Failed to update fee status');
+      await markPaidMutation.mutateAsync(memberId);
+    } catch (err) {
+      console.error('Failed to mark as paid:', err);
     }
   };
 
+  const getSponsorName = (sponsorId: bigint | undefined): string => {
+    if (!sponsorId) return '—';
+    const sponsor = allMembers.find((m) => m.id === sponsorId);
+    return sponsor ? sponsor.name : `#${sponsorId}`;
+  };
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-gold-500/15 flex items-center justify-center">
-            <Shield className="text-gold-400" size={20} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Admin Panel</h1>
-            <p className="text-muted-foreground text-sm">Ray Infotech MLM Management</p>
-          </div>
+        <div>
+          <h1 className="text-3xl font-bold text-foreground font-poppins">Admin Panel</h1>
+          <p className="text-muted-foreground mt-1">Manage members and monitor platform activity</p>
         </div>
-        <Button
-          onClick={() => refetch()}
-          variant="outline"
-          size="sm"
-          disabled={isFetching}
-          className="border-border"
-        >
-          <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
-          <span className="ml-2">Refresh</span>
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => checkStatusMutation.mutate()}
+            disabled={checkStatusMutation.isPending}
+            className="gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${checkStatusMutation.isPending ? 'animate-spin' : ''}`} />
+            Check Statuses
+          </Button>
+          <Dialog open={addMemberOpen} onOpenChange={setAddMemberOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold gap-2">
+                <UserPlus className="w-4 h-4" />
+                Add Member
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="font-poppins">Add New Member</DialogTitle>
+              </DialogHeader>
+              <AddMemberForm onSuccess={() => setAddMemberOpen(false)} />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Platform Statistics */}
-      <PlatformStatistics members={members || []} isLoading={isLoading} />
+      <div className="mb-8">
+        <PlatformStatistics />
+      </div>
 
       {/* Members Table */}
-      <Card className="bg-card border-border mt-8">
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <CardTitle className="text-foreground text-lg flex items-center gap-2">
-              <Users size={18} className="text-gold-400" />
-              All Members ({filteredMembers.length})
-            </CardTitle>
-            <div className="relative max-w-xs w-full">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="p-6 border-b border-border">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <h2 className="text-lg font-semibold text-foreground">
+              All Members
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                ({filteredMembers.length} total)
+              </span>
+            </h2>
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                placeholder="Search by name, ID or RI number..."
-                className="pl-9 bg-background border-border focus:border-gold-500"
+                placeholder="Search by name, ID, contact..."
+                value={searchQuery}
+                onChange={handleSearch}
+                className="pl-9"
               />
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
-            </div>
-          ) : paginatedMembers.length === 0 ? (
-            <div className="text-center py-10">
-              <Users size={40} className="text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">
-                {search ? 'No members match your search.' : 'No members registered yet.'}
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-border hover:bg-transparent">
-                      <TableHead className="text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <IdCard size={13} />
-                          Member ID
-                        </span>
-                      </TableHead>
-                      <TableHead className="text-muted-foreground">#</TableHead>
-                      <TableHead className="text-muted-foreground">Name</TableHead>
-                      <TableHead className="text-muted-foreground">Contact</TableHead>
-                      <TableHead className="text-muted-foreground">Join Date &amp; Time</TableHead>
-                      <TableHead className="text-muted-foreground">Downlines</TableHead>
-                      <TableHead className="text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <CalendarClock size={13} />
-                          Recruitment Deadline
-                        </span>
-                      </TableHead>
-                      <TableHead className="text-muted-foreground">Deadline Status</TableHead>
-                      <TableHead className="text-muted-foreground">Refund Status</TableHead>
-                      <TableHead className="text-muted-foreground">Level</TableHead>
-                      <TableHead className="text-muted-foreground">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedMembers.map((member) => {
-                      const deadlineStatus = computeDeadlineStatus(
-                        member.membershipDeadline,
-                        member.directDownlines,
-                        member.isCancelled
-                      );
-                      return (
-                        <TableRow key={member.id.toString()} className="border-border hover:bg-muted/30">
-                          {/* Unique RI Member ID — first and prominent */}
-                          <TableCell>
-                            <span className="font-mono font-bold text-gold-400 text-sm tracking-wide whitespace-nowrap bg-gold-500/10 border border-gold-500/25 rounded px-2 py-0.5">
-                              {member.memberIdStr}
-                            </span>
-                          </TableCell>
-                          <TableCell className="font-mono text-muted-foreground text-xs">
-                            #{member.id.toString()}
-                          </TableCell>
-                          <TableCell className="font-medium text-foreground">{member.name}</TableCell>
-                          <TableCell className="text-muted-foreground text-xs max-w-[140px] truncate">
-                            {member.contactInfo}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
-                            {new Date(Number(member.registrationTimestamp) / 1_000_000).toLocaleString('en-IN', {
-                              day: '2-digit', month: 'short', year: 'numeric',
-                              hour: '2-digit', minute: '2-digit', hour12: true,
-                            })}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <span className="text-foreground font-medium">{member.directDownlines.length}</span>
-                              <span className="text-muted-foreground">/3</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
-                            {formatDeadlineTimestamp(member.membershipDeadline)}
-                          </TableCell>
-                          <TableCell>
-                            <DeadlineStatusBadge status={deadlineStatus} />
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={member.feeRefunded
-                              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-xs'
-                              : 'bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs'
-                            }>
-                              {member.feeRefunded ? (
-                                <><CheckCircle size={10} className="mr-1" /> Refunded</>
-                              ) : (
-                                <><Clock size={10} className="mr-1" /> Pending</>
-                              )}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground text-sm">
-                            L{member.matrixPosition.level.toString()}
-                          </TableCell>
-                          <TableCell>
-                            {!member.joiningFeePaid && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleMarkPaid(member)}
-                                disabled={markFeePaid.isPending}
-                                className="text-xs border-gold-500/30 text-gold-400 hover:bg-gold-500/10"
-                              >
-                                Mark Paid
-                              </Button>
-                            )}
-                            {member.joiningFeePaid && (
-                              <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">
-                                Fee Paid
-                              </Badge>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+        </div>
 
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
-                  <p className="text-sm text-muted-foreground">
-                    Showing {(page - 1) * ITEMS_PER_PAGE + 1}–{Math.min(page * ITEMS_PER_PAGE, filteredMembers.length)} of {filteredMembers.length}
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setPage(p => Math.max(1, p - 1))}
-                      disabled={page === 1}
-                      className="border-border"
-                    >
-                      Previous
-                    </Button>
-                    <span className="flex items-center px-3 text-sm text-muted-foreground">
-                      {page} / {totalPages}
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                      disabled={page === totalPages}
-                      className="border-border"
-                    >
-                      Next
-                    </Button>
-                  </div>
+        {membersLoading ? (
+          <div className="p-6 space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-12 rounded-lg" />
+            ))}
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="font-semibold">Member ID</TableHead>
+                    <TableHead className="font-semibold">Name</TableHead>
+                    <TableHead className="font-semibold">Contact</TableHead>
+                    <TableHead className="font-semibold">Sponsor</TableHead>
+                    <TableHead className="font-semibold">Status</TableHead>
+                    <TableHead className="font-semibold">Payment</TableHead>
+                    <TableHead className="font-semibold">Joined</TableHead>
+                    <TableHead className="font-semibold">Downlines</TableHead>
+                    <TableHead className="font-semibold text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedMembers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
+                        No members found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    paginatedMembers.map((member) => (
+                      <MemberRow
+                        key={member.id.toString()}
+                        member={member}
+                        onMarkPaid={handleMarkPaid}
+                        markPaidPending={markPaidMutation.isPending}
+                        getSponsorName={getSponsorName}
+                      />
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-6 py-4 border-t border-border">
+                <p className="text-sm text-muted-foreground">
+                  Page {currentPage} of {totalPages}
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
                 </div>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
+  );
+}
+
+interface MemberRowProps {
+  member: MemberPublic;
+  onMarkPaid: (id: bigint) => void;
+  markPaidPending: boolean;
+  getSponsorName: (id: bigint | undefined) => string;
+}
+
+function MemberRow({ member, onMarkPaid, markPaidPending, getSponsorName }: MemberRowProps) {
+  const contactParts = member.contactInfo.includes('|')
+    ? member.contactInfo.split('|')
+    : [member.contactInfo, ''];
+
+  return (
+    <TableRow className={member.isCancelled ? 'opacity-60' : ''}>
+      <TableCell>
+        <span className="font-mono text-xs text-gold-400 font-semibold">{member.memberIdStr}</span>
+      </TableCell>
+      <TableCell>
+        <div className="font-medium text-sm">{member.name}</div>
+      </TableCell>
+      <TableCell>
+        <div className="text-xs text-muted-foreground">
+          <div>{contactParts[0]}</div>
+          {contactParts[1] && <div>{contactParts[1]}</div>}
+        </div>
+      </TableCell>
+      <TableCell>
+        <span className="text-sm text-muted-foreground">
+          {getSponsorName(member.sponsorId)}
+        </span>
+      </TableCell>
+      <TableCell>
+        <Badge variant={member.isCancelled ? 'destructive' : 'default'} className="text-xs">
+          {member.isCancelled ? 'Cancelled' : 'Active'}
+        </Badge>
+      </TableCell>
+      <TableCell>
+        {member.joiningFeePaid ? (
+          <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">
+            Paid
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="border-yellow-500/50 text-yellow-500 text-xs">
+            Pending
+          </Badge>
+        )}
+      </TableCell>
+      <TableCell>
+        <span className="text-xs text-muted-foreground">
+          {formatDate(member.registrationTimestamp)}
+        </span>
+      </TableCell>
+      <TableCell>
+        <span className="text-sm font-medium">{member.directDownlines.length} / 3</span>
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center justify-end gap-1">
+          {!member.joiningFeePaid && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs gap-1 border-green-500/50 text-green-400 hover:bg-green-500/10"
+              onClick={() => onMarkPaid(member.id)}
+              disabled={markPaidPending}
+            >
+              <CheckCircle className="w-3 h-3" />
+              Mark Paid
+            </Button>
+          )}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs gap-1 border-destructive/50 text-destructive hover:bg-destructive/10"
+                disabled={member.isCancelled}
+              >
+                <AlertTriangle className="w-3 h-3" />
+                Cancel
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Cancel Member?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will cancel <strong>{member.name}</strong>'s membership ({member.memberIdStr}).
+                  Their downline members will be reassigned to the next upline level.
+                  This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep Member</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive hover:bg-destructive/90"
+                  onClick={() => {
+                    // Note: Backend doesn't have explicit cancel/debar endpoint
+                    // checkMembershipStatuses handles expiry; this is a placeholder
+                    alert('Cancel/debar functionality requires backend update. Use "Check Statuses" to expire overdue members.');
+                  }}
+                >
+                  Cancel Membership
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </TableCell>
+    </TableRow>
   );
 }

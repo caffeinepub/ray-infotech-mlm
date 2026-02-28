@@ -13,13 +13,15 @@ import type { Principal } from '@icp-sdk/core/principal';
 export interface MLMTreePosition {
   'memberId' : MemberId,
   'level' : TreeLevel,
-  'position' : bigint,
+  'position' : MatrixPosition,
 }
+export type MatrixPosition = bigint;
 export type MemberId = bigint;
 export interface MemberPublic {
   'id' : bigint,
   'isCancelled' : boolean,
   'contactInfo' : string,
+  'uplineId' : [] | [bigint],
   'name' : string,
   'sponsorId' : [] | [bigint],
   'membershipDeadline' : Time,
@@ -32,6 +34,7 @@ export interface MemberPublic {
 }
 export interface MemberRegistration {
   'contactInfo' : string,
+  'uplineId' : [] | [MemberId],
   'name' : string,
   'sponsorId' : [] | [MemberId],
 }
@@ -52,6 +55,7 @@ export interface _SERVICE {
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getMember' : ActorMethod<[MemberId], [] | [MemberPublic]>,
+  'getMemberRegistrationData' : ActorMethod<[Principal], [] | [UserProfile]>,
   'getSenderDownlines' : ActorMethod<[MemberId], Array<MemberId>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
