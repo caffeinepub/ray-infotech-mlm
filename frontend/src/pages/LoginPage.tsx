@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import { useGetCallerUserRole } from '../hooks/useQueries';
-import { Zap, Shield, Users, TrendingUp, LogIn } from 'lucide-react';
+import { Zap, Shield, Users, TrendingUp, LogIn, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function LoginPage() {
@@ -13,9 +13,9 @@ export default function LoginPage() {
 
   const { data: userRole, isLoading: roleLoading } = useGetCallerUserRole();
 
-  // Redirect after login based on role
+  // Redirect after login based on role — only once identity is fully initialized
   useEffect(() => {
-    if (!isAuthenticated || roleLoading || isInitializing) return;
+    if (isInitializing || !isAuthenticated || roleLoading) return;
 
     if (userRole === 'admin') {
       navigate({ to: '/admin' });
@@ -37,6 +37,31 @@ export default function LoginPage() {
       }
     }
   };
+
+  // While identity is being restored, show a loading state instead of the login form
+  // to prevent the login UI from flashing for already-authenticated users
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-gold-400" />
+          <p className="text-muted-foreground text-sm">Restoring your session…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If already authenticated and role is loading, show a loading state
+  if (isAuthenticated && roleLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-gold-400" />
+          <p className="text-muted-foreground text-sm">Loading your account…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -87,7 +112,7 @@ export default function LoginPage() {
           {/* Login Button */}
           <Button
             onClick={handleLogin}
-            disabled={isLoggingIn || (isAuthenticated && roleLoading)}
+            disabled={isLoggingIn}
             className="w-full bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold py-3 rounded-xl text-base"
             size="lg"
           >
@@ -95,11 +120,6 @@ export default function LoginPage() {
               <span className="flex items-center gap-2">
                 <span className="w-4 h-4 border-2 border-navy-900/30 border-t-navy-900 rounded-full animate-spin" />
                 Signing in...
-              </span>
-            ) : isAuthenticated && roleLoading ? (
-              <span className="flex items-center gap-2">
-                <span className="w-4 h-4 border-2 border-navy-900/30 border-t-navy-900 rounded-full animate-spin" />
-                Loading...
               </span>
             ) : (
               <span className="flex items-center gap-2">

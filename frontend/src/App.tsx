@@ -5,7 +5,6 @@ import {
   createRootRoute,
   RouterProvider,
   Outlet,
-  redirect,
 } from '@tanstack/react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
@@ -20,6 +19,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import AdminPanel from './pages/AdminPanel';
+import { Loader2 } from 'lucide-react';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -53,6 +53,23 @@ function AppLayout() {
     userProfile === null &&
     !isLoginPage &&
     !isRegisterPage;
+
+  // Show a full-screen loading spinner while identity is being restored from storage.
+  // This prevents premature "access denied" or login prompts for authenticated users.
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-10 w-10 animate-spin text-gold-400" />
+            <p className="text-muted-foreground text-sm">Restoring your session…</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">

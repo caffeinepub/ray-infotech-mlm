@@ -8,12 +8,12 @@ import Array "mo:core/Array";
 import Iter "mo:core/Iter";
 import Time "mo:core/Time";
 import VarArray "mo:core/VarArray";
-import Migration "migration";
+
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
 // Enable data migration with with-clause
-(with migration = Migration.run)
+
 actor {
   // Initialize the user system state
   let accessControlState = AccessControl.initState();

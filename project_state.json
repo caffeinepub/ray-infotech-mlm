@@ -4,21 +4,37 @@
   "summary": "New project",
   "architectural_notes": [],
   "known_issues": [
-    "Admin delete permission check is incorrectly blocking admin users with 'only admin can delete' message even when logged in as admin"
+    "Users are being prompted to login again despite already being logged in, resulting in 'access denied' errors — authentication/session persistence issue in production."
   ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-fix-the-admin-role-check-in-the-delete-member-flow-so-that-authenticated-admin-users-can-successfully-delete-members-without-seeing-the-only-admin-can-delete-error-message-the-permission-guard-must-correctly-identify-the-current-user-as-admin-before-blocking-the-action",
-      "title": "Fix the admin role check in the delete member flow so that authenticated admin users can successfully delete members without seeing the 'only admin can delete' error message. The permission guard must correctly identify the current user as admin before blocking the action.",
+      "id": "feature-fix-the-internet-identity-session-persistence-so-that-already-authenticated-users-are-not-prompted-to-log-in-again-on-page-load-or-navigation-the-identity-must-be-restored-from-the-persisted-delegation-chain-without-requiring-a-new-login-flow",
+      "title": "Fix the Internet Identity session persistence so that already-authenticated users are not prompted to log in again on page load or navigation. The identity must be restored from the persisted delegation chain without requiring a new login flow.",
       "reqIds": [
         "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-access-denied-errors-for-authenticated-users-after-session-is-successfully-restored-role-based-access-checks-admin-and-regular-user-must-correctly-recognize-the-restored-identity-principal-and-grant-appropriate-permissions-without-requiring-a-fresh-login",
+      "title": "Fix access denied errors for authenticated users: after session is successfully restored, role-based access checks (admin and regular user) must correctly recognize the restored identity principal and grant appropriate permissions without requiring a fresh login.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-the-loginpage-redirect-logic-does-not-re-trigger-for-users-who-are-already-authenticated-if-a-user-navigates-to-login-while-already-logged-in-they-should-be-immediately-redirected-to-the-appropriate-page-admin-panel-or-dashboard-without-showing-the-login-prompt",
+      "title": "Ensure the LoginPage redirect logic does not re-trigger for users who are already authenticated: if a user navigates to /login while already logged in, they should be immediately redirected to the appropriate page (admin panel or dashboard) without showing the login prompt.",
+      "reqIds": [
+        "REQ-3"
       ],
       "version": 1
     }
   ],
   "new_feature_requests": [],
-  "projectName": "Fix admin delete permission check blocking admin users",
+  "projectName": "RAY INFOTECH MLM",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

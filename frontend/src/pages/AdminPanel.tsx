@@ -8,6 +8,7 @@ import {
   useDeleteMember,
   useIsCallerAdmin,
 } from '../hooks/useQueries';
+import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import type { MemberPublic } from '../backend';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -142,6 +143,7 @@ export default function AdminPanel() {
   const [markingPaidId, setMarkingPaidId] = useState<bigint | null>(null);
   const [showAddMember, setShowAddMember] = useState(false);
 
+  const { isInitializing } = useInternetIdentity();
   const { data: isAdmin, isLoading: adminLoading } = useIsCallerAdmin();
   const { data: members = [], isLoading: membersLoading, refetch } = useListMembers();
   const markPaidMutation = useMarkJoiningFeePaid();
@@ -183,16 +185,21 @@ export default function AdminPanel() {
     }
   };
 
-  // Show loading while checking admin status
-  if (adminLoading) {
+  // Show loading while identity is being restored from storage OR while checking admin status
+  if (isInitializing || adminLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-gold-400" />
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-gold-400" />
+          <p className="text-muted-foreground text-sm">
+            {isInitializing ? 'Restoring your session…' : 'Verifying admin access…'}
+          </p>
+        </div>
       </div>
     );
   }
 
-  // Show access denied if not admin
+  // Show access denied only after initialization is complete and admin check has run
   if (!isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -260,84 +267,92 @@ export default function AdminPanel() {
         {/* Add Member Form */}
         {showAddMember && (
           <div className="bg-card border border-border rounded-xl p-6">
-            <h2 className="text-xl font-semibold mb-4">Register New Member</h2>
-            <AddMemberForm onSuccess={() => setShowAddMember(false)} />
+            <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-gold-400" />
+              Add New Member
+            </h2>
+            <AddMemberForm />
           </div>
         )}
 
         {/* Members Table */}
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center gap-3">
-            <h2 className="text-xl font-semibold flex-1">
-              Members ({filtered.length})
-            </h2>
-            <div className="relative w-full sm:w-72">
+            <h2 className="text-lg font-semibold text-foreground flex-1">Members</h2>
+            <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by name, ID, contact…"
+                placeholder="Search members…"
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                className="pl-9"
+                className="pl-9 bg-background border-border"
               />
             </div>
           </div>
 
-          {membersLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-gold-400" />
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-16 text-muted-foreground">
-              {search ? 'No members match your search.' : 'No members registered yet.'}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted/40">
-                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Member ID</th>
-                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Name</th>
-                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Contact</th>
-                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Fee</th>
-                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Status</th>
-                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Downlines</th>
-                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Actions</th>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Member ID</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Name</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Contact</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Fee</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Downlines</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {membersLoading ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                      Loading members…
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {paginated.map((member) => (
+                ) : paginated.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                      {search ? 'No members match your search.' : 'No members registered yet.'}
+                    </td>
+                  </tr>
+                ) : (
+                  paginated.map((member) => (
                     <MemberRow
                       key={member.id.toString()}
                       member={member}
                       onMarkPaid={handleMarkPaid}
-                      isMarkingPaid={markingPaidId === member.id && markPaidMutation.isPending}
+                      isMarkingPaid={markingPaidId === member.id}
                     />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+            <div className="p-4 border-t border-border flex items-center justify-between">
               <span className="text-sm text-muted-foreground">
-                Page {page} of {totalPages}
+                Page {page} of {totalPages} · {filtered.length} members
               </span>
               <div className="flex gap-2">
                 <Button
-                  size="sm"
                   variant="outline"
+                  size="sm"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
+                  className="border-border"
                 >
                   Previous
                 </Button>
                 <Button
-                  size="sm"
                   variant="outline"
+                  size="sm"
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
+                  className="border-border"
                 >
                   Next
                 </Button>

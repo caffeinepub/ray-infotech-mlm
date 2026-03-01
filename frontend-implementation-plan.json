@@ -1,28 +1,84 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix admin delete permission check blocking admin users",
+  "title": "Fix authentication session persistence causing login prompts and access denied errors",
   "requirements": [
     {
       "id": "REQ-1",
-      "summary": "Fix the admin role check in the delete member flow so that authenticated admin users can successfully delete members without seeing the 'only admin can delete' error message",
+      "summary": "Fix Internet Identity session persistence to prevent authenticated users from being prompted to log in again on page load or navigation",
       "acceptanceCriteria": [
-        "When logged in as an admin, clicking the delete member button does NOT show 'only admin can delete' or any unauthorized error message.",
-        "The delete confirmation dialog appears correctly for admin users.",
-        "Confirming deletion in the dialog successfully calls the backend deleteMember function and removes the member.",
-        "Non-admin users still see an appropriate access-denied message when attempting to delete.",
-        "The backend role check for deleteMember correctly validates admin principal/role before rejecting the request."
+        "A user who has previously authenticated via Internet Identity is not redirected to the login page on subsequent visits or page refreshes.",
+        "The persisted identity is rehydrated correctly from storage on app startup.",
+        "No 'access denied' error is shown to a user whose session is still valid."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/AdminPanel.tsx",
+          "path": "frontend/src/main.tsx",
           "operation": "modify",
-          "description": "Fix the admin role check in handleDeleteMember to properly await and verify the admin status before blocking the delete action. Ensure isCallerAdminQuery is fully loaded and has valid data before performing the check. Add proper error handling for backend authorization failures and display appropriate error messages to the user. Verify the component's usage instructions before implementing."
+          "description": "Ensure InternetIdentityProvider is properly initialized before the App component mounts. Add error boundary handling for identity restoration failures to prevent app crashes during rehydration."
         },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Add identity restoration check at app startup. Ensure the router does not navigate to login routes while identity is being restored from storage. Add a loading state that blocks routing until identity rehydration completes or fails, preventing premature login redirects."
+        },
+        {
+          "path": "frontend/src/pages/LoginPage.tsx",
+          "operation": "modify",
+          "description": "Add authentication state check at the top of LoginPage component. If useInternetIdentity reports an authenticated identity on mount, immediately redirect to the appropriate page (admin panel for admins, dashboard for users) without triggering the Internet Identity login flow. This prevents the login prompt from appearing for already-authenticated sessions."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Fix access denied errors for authenticated users by ensuring role-based access checks correctly recognize the restored identity principal without requiring a fresh login",
+      "acceptanceCriteria": [
+        "An admin user whose session is restored from persistence can access the Admin Panel without receiving an access denied error.",
+        "A regular authenticated user can access the Dashboard without being blocked.",
+        "The backend actor is initialized with the restored authenticated identity so that canister calls carry the correct principal.",
+        "The useActor hook correctly picks up the persisted identity on mount and does not fall back to anonymous principal for authenticated sessions."
+      ],
+      "file_operations": [
         {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Review and fix the useIsCallerAdmin query hook to ensure it properly fetches and caches the admin status. Ensure the query is enabled only when the actor is available and authentication is complete. Add proper retry logic and error handling. Verify the component's usage instructions before implementing."
+          "description": "Review and fix the useGetCallerUserRole and useIsCallerAdmin queries to ensure they wait for actor initialization with the restored identity. Add proper enabled flags that prevent these queries from running with an anonymous or null actor. Ensure query keys are stable and do not cause unnecessary refetches that might expose intermediate anonymous states."
+        },
+        {
+          "path": "frontend/src/pages/AdminPanel.tsx",
+          "operation": "modify",
+          "description": "Update the admin access check logic to wait for both actor initialization and role query completion before rendering access denied or admin content. Add a loading state that displays while the restored identity is being verified against backend roles. Ensure the component does not flash access denied messages during identity restoration."
+        },
+        {
+          "path": "frontend/src/pages/DashboardPage.tsx",
+          "operation": "modify",
+          "description": "Add authentication and actor readiness checks at the top of DashboardPage. Display a loading state while identity is being restored and actor is initializing. Prevent rendering of member data or triggering backend queries until the authenticated actor is confirmed ready, avoiding access denied errors from premature anonymous calls."
+        },
+        {
+          "path": "frontend/src/components/Layout.tsx",
+          "operation": "modify",
+          "description": "Add identity restoration awareness to the Layout component. Display a global loading indicator while identity is being rehydrated from storage. Ensure Header authentication state (login/logout button) reflects the restored identity correctly and does not flicker between logged-in and logged-out states during app initialization."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Prevent LoginPage redirect logic from re-triggering for users who are already authenticated",
+      "acceptanceCriteria": [
+        "Navigating to /login while authenticated redirects the user away from the login page immediately.",
+        "The login button/Internet Identity popup is not triggered for already-authenticated sessions.",
+        "The AppLayout and route guards consistently read authentication state from the same source of truth."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/LoginPage.tsx",
+          "operation": "modify",
+          "description": "Strengthen the authentication check in LoginPage to handle all edge cases. Use a useEffect hook that monitors the identity state from useInternetIdentity and immediately redirects authenticated users to their appropriate destination (admin panel or dashboard based on role). Ensure this check runs on every mount and whenever authentication state changes, preventing the login UI from rendering at all for authenticated sessions."
+        },
+        {
+          "path": "frontend/src/components/Header.tsx",
+          "operation": "modify",
+          "description": "Ensure the login button in Header reads authentication state from the same useInternetIdentity hook source. Add defensive checks to prevent the login flow from being triggered when a user is already authenticated. Synchronize the button's disabled state with any ongoing identity restoration operations to avoid race conditions."
         }
       ]
     }

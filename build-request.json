@@ -1,38 +1,73 @@
 {
   "kind": "build_request",
-  "title": "Fix admin delete permission check blocking admin users",
+  "title": "Fix authentication session persistence causing login prompts and access denied errors",
+  "projectName": "RAY INFOTECH MLM",
   "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Fix the admin role check in the delete member flow so that authenticated admin users can successfully delete members without seeing the 'only admin can delete' error message. The permission guard must correctly identify the current user as admin before blocking the action.",
+      "text": "Fix the Internet Identity session persistence so that already-authenticated users are not prompted to log in again on page load or navigation. The identity must be restored from the persisted delegation chain without requiring a new login flow.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "I'd already logged in still it's prompting to login and access denied"
+        ]
+      },
+      "acceptanceCriteria": [
+        "A user who has previously authenticated via Internet Identity is not redirected to the login page on subsequent visits or page refreshes.",
+        "The persisted identity is rehydrated correctly from storage on app startup.",
+        "No 'access denied' error is shown to a user whose session is still valid."
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "Fix access denied errors for authenticated users: after session is successfully restored, role-based access checks (admin and regular user) must correctly recognize the restored identity principal and grant appropriate permissions without requiring a fresh login.",
       "target": "both",
       "source": {
         "messageIds": [
           "msg-1"
         ],
         "quotes": [
-          "It's not working",
-          "Prompting message only admin can delete",
-          "As admin I am trying still it's prompting message only admin can delete"
+          "still it's prompting to login and access denied"
         ]
       },
       "acceptanceCriteria": [
-        "When logged in as an admin, clicking the delete member button does NOT show 'only admin can delete' or any unauthorized error message.",
-        "The delete confirmation dialog appears correctly for admin users.",
-        "Confirming deletion in the dialog successfully calls the backend deleteMember function and removes the member.",
-        "Non-admin users still see an appropriate access-denied message when attempting to delete.",
-        "The backend role check for deleteMember correctly validates admin principal/role before rejecting the request."
+        "An admin user whose session is restored from persistence can access the Admin Panel without receiving an access denied error.",
+        "A regular authenticated user can access the Dashboard without being blocked.",
+        "The backend actor is initialized with the restored authenticated identity so that canister calls carry the correct principal.",
+        "The useActor hook correctly picks up the persisted identity on mount and does not fall back to anonymous principal for authenticated sessions."
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Ensure the LoginPage redirect logic does not re-trigger for users who are already authenticated: if a user navigates to /login while already logged in, they should be immediately redirected to the appropriate page (admin panel or dashboard) without showing the login prompt.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "I'd already logged in still it's prompting to login"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Navigating to /login while authenticated redirects the user away from the login page immediately.",
+        "The login button/Internet Identity popup is not triggered for already-authenticated sessions.",
+        "The AppLayout and route guards consistently read authentication state from the same source of truth."
       ]
     }
   ],
   "constraints": [
-    "Do not change the overall AdminPanel layout or other admin features.",
-    "Do not modify files under frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui."
+    "Do not modify files under frontend/src/hooks/useInternetIdentity.ts or frontend/src/hooks/useActor.ts directly — propose safe alternatives or wrapper fixes in other files.",
+    "Do not change the backend authentication or principal logic beyond what is necessary to fix the access denied issue."
   ],
   "nonGoals": [
-    "Adding new admin features or changing the member management UI beyond the delete fix.",
-    "Changing the commission or MLM tree logic."
+    "Adding new authentication providers or replacing Internet Identity.",
+    "Changing the visual design or layout of any page.",
+    "Adding new MLM features or modifying commission logic."
   ],
   "imageRequirements": {
     "required": [],

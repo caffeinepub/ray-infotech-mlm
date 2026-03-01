@@ -2,11 +2,11 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-fix-the-admin-role-check-in-the-delete-member-flow-so-that-authenticated-admin-users-can-successfully-delete-members-without-seeing-the-only-admin-can-delete-error-message-the-permission-guard-must-correctly-identify-the-current-user-as-admin-before-blocking-the-action",
-      "featureTitle": "Fix the admin role check in the delete member flow so that authenticated admin users can successfully delete members without seeing the 'only admin can delete' error message. The permission guard must correctly identify the current user as admin before blocking the action.",
+      "featureId": "feature-fix-the-internet-identity-session-persistence-so-that-already-authenticated-users-are-not-prompted-to-log-in-again-on-page-load-or-navigation-the-identity-must-be-restored-from-the-persisted-delegation-chain-without-requiring-a-new-login-flow",
+      "featureTitle": "Fix the Internet Identity session persistence so that already-authenticated users are not prompted to log in again on page load or navigation. The identity must be restored from the persisted delegation chain without requiring a new login flow.",
       "files": [
-        "frontend/src/hooks/useQueries.ts",
-        "frontend/src/pages/AdminPanel.tsx"
+        "frontend/src/App.tsx",
+        "frontend/src/pages/LoginPage.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -18,6 +18,46 @@
       ],
       "testIds": [
         "REQ-1"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-fix-access-denied-errors-for-authenticated-users-after-session-is-successfully-restored-role-based-access-checks-admin-and-regular-user-must-correctly-recognize-the-restored-identity-principal-and-grant-appropriate-permissions-without-requiring-a-fresh-login",
+      "featureTitle": "Fix access denied errors for authenticated users: after session is successfully restored, role-based access checks (admin and regular user) must correctly recognize the restored identity principal and grant appropriate permissions without requiring a fresh login.",
+      "files": [
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/AdminPanel.tsx",
+        "frontend/src/pages/DashboardPage.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-2"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-ensure-the-loginpage-redirect-logic-does-not-re-trigger-for-users-who-are-already-authenticated-if-a-user-navigates-to-login-while-already-logged-in-they-should-be-immediately-redirected-to-the-appropriate-page-admin-panel-or-dashboard-without-showing-the-login-prompt",
+      "featureTitle": "Ensure the LoginPage redirect logic does not re-trigger for users who are already authenticated: if a user navigates to /login while already logged in, they should be immediately redirected to the appropriate page (admin panel or dashboard) without showing the login prompt.",
+      "files": [
+        "frontend/src/pages/LoginPage.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-3"
       ],
       "confidence": "high"
     }
