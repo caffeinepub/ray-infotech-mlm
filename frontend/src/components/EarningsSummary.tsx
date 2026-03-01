@@ -1,9 +1,21 @@
 import React from 'react';
 import { MemberPublic } from '../backend';
-import { IndianRupee, CheckCircle, Clock, TrendingUp } from 'lucide-react';
+import { IndianRupee, CheckCircle, Clock, TrendingUp, Lock } from 'lucide-react';
 
 const JOINING_FEE = 2750;
-const LEVEL_RATES = [0, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1]; // index = level (1-indexed), level 1 = fee refund
+
+// Explicit 9-level config — never derived, never truncated
+const LEVEL_CONFIG: Array<{ level: number; rate: number; maxMembers: number }> = [
+  { level: 1, rate: 9,  maxMembers: 3 },
+  { level: 2, rate: 8,  maxMembers: 9 },
+  { level: 3, rate: 7,  maxMembers: 27 },
+  { level: 4, rate: 6,  maxMembers: 81 },
+  { level: 5, rate: 5,  maxMembers: 243 },
+  { level: 6, rate: 4,  maxMembers: 729 },
+  { level: 7, rate: 3,  maxMembers: 2187 },
+  { level: 8, rate: 2,  maxMembers: 6561 },
+  { level: 9, rate: 1,  maxMembers: 19683 },
+];
 
 interface EarningsSummaryProps {
   member: MemberPublic;
@@ -19,35 +31,30 @@ function formatCurrency(amount: number): string {
 }
 
 export default function EarningsSummary({ member, downlinesByLevel }: EarningsSummaryProps) {
-  const hasLevel1Refund = member.directDownlines.length >= 3;
+  const hasLevel1Refund = (member.directDownlines?.length ?? 0) >= 3;
 
-  // Calculate per-level earnings
-  const levelEarnings = Array.from({ length: 9 }, (_, i) => {
-    const level = i + 1;
-    if (level === 1) {
-      return {
-        level,
-        earned: hasLevel1Refund ? JOINING_FEE : 0,
-        potential: JOINING_FEE,
-        label: 'Fee Refund',
-        unlocked: hasLevel1Refund,
-      };
-    }
-    const membersAtLevel = downlinesByLevel[level] ?? [];
-    const count = membersAtLevel.length;
-    const rate = LEVEL_RATES[level];
+  // Calculate per-level earnings for all 9 levels using explicit config
+  const levelEarnings = LEVEL_CONFIG.map(({ level, rate, maxMembers }) => {
+    const count: number =
+      level === 1
+        ? (member.directDownlines?.length ?? 0)
+        : (downlinesByLevel?.[level]?.length ?? 0);
+
     const earned = count * JOINING_FEE * (rate / 100);
-    const potentialCount = Math.pow(3, level);
-    const potential = potentialCount * JOINING_FEE * (rate / 100);
+    const potential = maxMembers * JOINING_FEE * (rate / 100);
+
     return {
       level,
+      rate,
+      count,
       earned,
       potential,
-      label: `${rate}% Commission`,
+      label: `${rate}%`,
       unlocked: count > 0,
     };
   });
 
+  // Totals across all 9 levels
   const totalEarned = levelEarnings.reduce((sum, l) => sum + l.earned, 0);
   const totalPotential = levelEarnings.reduce((sum, l) => sum + l.potential, 0);
 
@@ -82,7 +89,7 @@ export default function EarningsSummary({ member, downlinesByLevel }: EarningsSu
 
       {/* Fee Refund Status */}
       <div
-        className={`flex items-center gap-3 p-4 rounded-xl border mb-4 ${
+        className={`flex items-center gap-3 p-4 rounded-xl border mb-6 ${
           hasLevel1Refund
             ? 'bg-green-500/10 border-green-500/30'
             : 'bg-muted/30 border-border'
@@ -100,7 +107,7 @@ export default function EarningsSummary({ member, downlinesByLevel }: EarningsSu
           <p className="text-xs text-muted-foreground">
             {hasLevel1Refund
               ? `Refunded — 3 direct recruits completed`
-              : `${member.directDownlines.length}/3 direct recruits — ${3 - member.directDownlines.length} more needed`}
+              : `${member.directDownlines?.length ?? 0}/3 direct recruits — ${3 - (member.directDownlines?.length ?? 0)} more needed`}
           </p>
         </div>
         <div className="ml-auto">
@@ -114,27 +121,48 @@ export default function EarningsSummary({ member, downlinesByLevel }: EarningsSu
         </div>
       </div>
 
-      {/* Level Earnings Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {levelEarnings.slice(1).map(({ level, earned, potential, label, unlocked }) => (
+      {/* Level Earnings Grid — all 9 levels in a 3×3 grid */}
+      <p className="text-xs text-muted-foreground mb-3 font-medium uppercase tracking-wide">
+        Per-Level Commission Breakdown (Levels 1–9)
+      </p>
+      <div className="grid grid-cols-3 gap-3">
+        {levelEarnings.map(({ level, rate, count, earned, potential, label, unlocked }) => (
           <div
-            key={level}
+            key={`level-card-${level}`}
             className={`p-3 rounded-xl border ${
               unlocked
                 ? 'bg-gold-500/5 border-gold-500/30'
-                : 'bg-muted/20 border-border opacity-60'
+                : 'bg-card border-border/60 ring-1 ring-border/40'
             }`}
           >
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-semibold text-muted-foreground">Level {level}</span>
-              <span className="text-xs text-gold-400">{label}</span>
+              <span className="text-xs font-semibold text-muted-foreground">Lvl {level}</span>
+              <span className={`text-xs font-bold ${unlocked ? 'text-gold-400' : 'text-muted-foreground'}`}>
+                {label}
+              </span>
             </div>
-            <p className="text-base font-bold text-foreground">
-              {unlocked ? formatCurrency(earned) : '—'}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Max: {formatCurrency(potential)}
-            </p>
+            {unlocked ? (
+              <>
+                <p className="text-sm font-bold text-foreground">
+                  {formatCurrency(earned)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                  {count} member{count !== 1 ? 's' : ''}
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-1">
+                  <Lock className="w-3 h-3 text-muted-foreground" />
+                  <p className="text-sm font-semibold text-muted-foreground">
+                    ₹0.00
+                  </p>
+                </div>
+                <p className="text-xs text-muted-foreground/70 mt-0.5 truncate">
+                  Max: {formatCurrency(potential)}
+                </p>
+              </>
+            )}
           </div>
         ))}
       </div>

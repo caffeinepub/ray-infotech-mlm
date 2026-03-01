@@ -3,25 +3,31 @@ import Text "mo:core/Text";
 import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
 import List "mo:core/List";
-import Iter "mo:core/Iter";
 import Nat "mo:core/Nat";
 import Array "mo:core/Array";
-import Migration "migration";
+import Iter "mo:core/Iter";
 import Time "mo:core/Time";
+import VarArray "mo:core/VarArray";
+import Migration "migration";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
-import VarArray "mo:core/VarArray";
 
+// Enable data migration with with-clause
 (with migration = Migration.run)
 actor {
+  // Initialize the user system state
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
+
+  // Use UserRole type from AccessControl component
+  type UserRole = AccessControl.UserRole;
 
   public type UserProfile = {
     name : Text;
     contactInfo : Text;
   };
 
+  // Change userProfiles to persistent Map
   let userProfiles = Map.empty<Principal, UserProfile>();
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
@@ -345,7 +351,7 @@ actor {
   };
 
   public shared ({ caller }) func markJoiningFeePaid(memberId : MemberId) : async () {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can mark joining fees as paid. Switch to admin mode in the top right menu.");
     };
 
@@ -358,10 +364,46 @@ actor {
   };
 
   public shared ({ caller }) func checkMembershipStatuses() : async () {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can run status check. Switch to admin mode in the top right menu.");
     };
     checkAndExpireMembers();
+  };
+
+  public shared ({ caller }) func deleteMember(memberId : MemberId) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can delete members");
+    };
+
+    if (not members.containsKey(memberId)) {
+      Runtime.trap("Member does not exist: " # memberId.toText());
+    };
+
+    switch (members.get(memberId)) {
+      case (?member) {
+        switch (member.uplineId) {
+          case (?uplineId) {
+            switch (members.get(uplineId)) {
+              case (?uplineMember) {
+                let remainingDownlines = uplineMember.directDownlines.filter(
+                  func(id) { id != memberId }
+                );
+                let updatedUpline = {
+                  uplineMember with
+                  directDownlines = remainingDownlines;
+                };
+                members.add(uplineId, updatedUpline);
+              };
+              case (null) {};
+            };
+          };
+          case (null) {};
+        };
+      };
+      case (null) {};
+    };
+
+    members.remove(memberId);
   };
 
   func toPublic(record : Member) : MemberPublic {
@@ -396,5 +438,33 @@ actor {
         };
       };
     };
+  };
+
+  let commissionRates : [Nat] = [9, 8, 7, 6, 5, 4, 3, 2, 1];
+  let joiningFee : Nat = 2750;
+
+  func calculateCommissionsInternal(_amount : Nat) : [LevelCommission] {
+    let commissionVarArray = VarArray.repeat<LevelCommission>({ level = 1; levelMembers = 0; commissionAmount = 0; levelPercentage = 0; totalLevelEarnings = 0 }, commissionRates.size());
+
+    for (i in Nat.range(0, commissionRates.size())) {
+      let percentage = commissionRates[i];
+      commissionVarArray[i] := {
+        commissionVarArray[i] with
+        commissionAmount = (joiningFee * percentage) / 100;
+        levelPercentage = percentage;
+        level = i + 1;
+      };
+    };
+
+    commissionVarArray.toArray();
+  };
+
+  public query ({ caller }) func calculateCommissions(_amount : Nat) : async [LevelCommission] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap(
+        "Unauthorized: Only registered users can view commission calculations. Click the account icon in the top right to switch user mode."
+      );
+    };
+    calculateCommissionsInternal(joiningFee);
   };
 };

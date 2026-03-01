@@ -1,75 +1,71 @@
 import Map "mo:core/Map";
 import Nat "mo:core/Nat";
+import Principal "mo:core/Principal";
+import Text "mo:core/Text";
 import Time "mo:core/Time";
 
 module {
-  type OldMember = {
-    id : Nat;
+  public type UserProfile = {
+    name : Text;
+    contactInfo : Text;
+  };
+
+  type MemberId = Nat;
+  type TreeLevel = Nat;
+  type MatrixPosition = Nat;
+
+  type Commission = {
+    memberId : MemberId;
+    amount : Nat;
+    level : TreeLevel;
+    timestamp : Time.Time;
+  };
+
+  type MLMTreePosition = {
+    memberId : MemberId;
+    level : TreeLevel;
+    position : MatrixPosition;
+  };
+
+  public type LevelCommission = {
+    level : TreeLevel;
+    levelMembers : Nat;
+    commissionAmount : Nat;
+    levelPercentage : Nat;
+    totalLevelEarnings : Nat;
+  };
+
+  public type Member = {
+    id : MemberId;
     memberIdStr : Text;
     name : Text;
     contactInfo : Text;
-    sponsorId : ?Nat;
+    sponsorId : ?MemberId;
+    uplineId : ?MemberId;
     joiningFeePaid : Bool;
     feeRefunded : Bool;
     registrationTimestamp : Time.Time;
-    matrixPosition : {
-      memberId : Nat;
-      level : Nat;
-      position : Nat;
-    };
-    commissions : [{
-      memberId : Nat;
-      amount : Nat;
-      level : Nat;
-      timestamp : Time.Time;
-    }];
-    directDownlines : [Nat];
+    matrixPosition : MLMTreePosition;
+    commissions : [Commission];
+    directDownlines : [MemberId];
     membershipDeadline : Time.Time;
     isCancelled : Bool;
   };
 
   type OldActor = {
-    members : Map.Map<Nat, OldMember>;
+    userProfiles : Map.Map<Principal, UserProfile>;
+    members : Map.Map<MemberId, Member>;
     nextMemberId : Nat;
-  };
-
-  type NewMember = {
-    id : Nat;
-    memberIdStr : Text;
-    name : Text;
-    contactInfo : Text;
-    sponsorId : ?Nat;
-    uplineId : ?Nat;
-    joiningFeePaid : Bool;
-    feeRefunded : Bool;
-    registrationTimestamp : Time.Time;
-    matrixPosition : {
-      memberId : Nat;
-      level : Nat;
-      position : Nat;
-    };
-    commissions : [{
-      memberId : Nat;
-      amount : Nat;
-      level : Nat;
-      timestamp : Time.Time;
-    }];
-    directDownlines : [Nat];
-    membershipDeadline : Time.Time;
-    isCancelled : Bool;
   };
 
   type NewActor = {
-    members : Map.Map<Nat, NewMember>;
+    userProfiles : Map.Map<Principal, UserProfile>;
+    members : Map.Map<MemberId, Member>;
     nextMemberId : Nat;
   };
 
+  // Migration function to convert old actor state to new state
   public func run(old : OldActor) : NewActor {
-    let newMembers = old.members.map<Nat, OldMember, NewMember>(
-      func(_, oldMember) {
-        { oldMember with uplineId = null };
-      }
-    );
-    { old with members = newMembers };
+    old;
   };
 };

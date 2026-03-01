@@ -13,13 +13,20 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
+export const TreeLevel = IDL.Nat;
+export const LevelCommission = IDL.Record({
+  'levelPercentage' : IDL.Nat,
+  'totalLevelEarnings' : IDL.Nat,
+  'level' : TreeLevel,
+  'levelMembers' : IDL.Nat,
+  'commissionAmount' : IDL.Nat,
+});
+export const MemberId = IDL.Nat;
 export const UserProfile = IDL.Record({
   'contactInfo' : IDL.Text,
   'name' : IDL.Text,
 });
-export const MemberId = IDL.Nat;
 export const Time = IDL.Int;
-export const TreeLevel = IDL.Nat;
 export const MatrixPosition = IDL.Nat;
 export const MLMTreePosition = IDL.Record({
   'memberId' : MemberId,
@@ -55,7 +62,13 @@ export const MemberRegistrationResult = IDL.Record({
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'calculateCommissions' : IDL.Func(
+      [IDL.Nat],
+      [IDL.Vec(LevelCommission)],
+      ['query'],
+    ),
   'checkMembershipStatuses' : IDL.Func([], [], []),
+  'deleteMember' : IDL.Func([MemberId], [], []),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getMember' : IDL.Func([MemberId], [IDL.Opt(MemberPublic)], ['query']),
@@ -89,13 +102,20 @@ export const idlFactory = ({ IDL }) => {
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
+  const TreeLevel = IDL.Nat;
+  const LevelCommission = IDL.Record({
+    'levelPercentage' : IDL.Nat,
+    'totalLevelEarnings' : IDL.Nat,
+    'level' : TreeLevel,
+    'levelMembers' : IDL.Nat,
+    'commissionAmount' : IDL.Nat,
+  });
+  const MemberId = IDL.Nat;
   const UserProfile = IDL.Record({
     'contactInfo' : IDL.Text,
     'name' : IDL.Text,
   });
-  const MemberId = IDL.Nat;
   const Time = IDL.Int;
-  const TreeLevel = IDL.Nat;
   const MatrixPosition = IDL.Nat;
   const MLMTreePosition = IDL.Record({
     'memberId' : MemberId,
@@ -131,7 +151,13 @@ export const idlFactory = ({ IDL }) => {
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'calculateCommissions' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Vec(LevelCommission)],
+        ['query'],
+      ),
     'checkMembershipStatuses' : IDL.Func([], [], []),
+    'deleteMember' : IDL.Func([MemberId], [], []),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getMember' : IDL.Func([MemberId], [IDL.Opt(MemberPublic)], ['query']),

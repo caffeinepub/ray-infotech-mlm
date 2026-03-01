@@ -12,7 +12,14 @@ import { Users, TrendingUp, IndianRupee, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 const JOINING_FEE = 2750;
-const LEVEL_RATES = [0, 9, 8, 7, 6, 5, 4, 3, 2, 1]; // index = level, level 1 = fee refund
+
+// Explicit 9-level rate config — index = level number
+const LEVEL_RATES: Record<number, number> = {
+  1: 9, 2: 8, 3: 7, 4: 6, 5: 5, 6: 4, 7: 3, 8: 2, 9: 1,
+};
+
+// All 9 levels explicitly defined
+const ALL_LEVELS: number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-IN', {
@@ -22,10 +29,62 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-function formatMemberIdStr(id: bigint): string {
-  const numStr = id.toString();
-  const padded = numStr.padStart(9, '0');
-  return `RI ${padded}`;
+/** Build a fresh levels map pre-initialised with empty arrays for all 9 levels */
+function buildEmptyLevels(): Record<number, MemberPublic[]> {
+  return { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: [], 9: [] };
+}
+
+/**
+ * BFS traversal starting from the selected member's direct downlines.
+ * Level 1 = direct downlines, Level 2 = their children, …, Level 9 = 9th generation.
+ * Always returns a record with all 9 level keys populated (empty arrays if no members).
+ */
+function buildDownlinesByLevel(
+  rootMember: MemberPublic,
+  memberMap: Map<bigint, MemberPublic>
+): Record<number, MemberPublic[]> {
+  const levels = buildEmptyLevels();
+
+  if (!rootMember?.directDownlines?.length) {
+    return levels;
+  }
+
+  // Seed the queue with direct downlines at level 1
+  const queue: Array<{ id: bigint; level: number }> = [];
+  for (const childId of rootMember.directDownlines) {
+    queue.push({ id: childId, level: 1 });
+  }
+
+  const visited = new Set<string>();
+
+  while (queue.length > 0) {
+    const item = queue.shift()!;
+    const idKey = item.id.toString();
+
+    // Skip already-visited nodes to avoid cycles
+    if (visited.has(idKey)) continue;
+    visited.add(idKey);
+
+    const member = memberMap.get(item.id);
+    if (!member) continue;
+
+    // Place member in the correct level bucket (levels 1–9)
+    if (item.level >= 1 && item.level <= 9) {
+      levels[item.level].push(member);
+    }
+
+    // Enqueue children for the next level — stop after level 9
+    if (item.level < 9 && member.directDownlines?.length) {
+      for (const childId of member.directDownlines) {
+        const childKey = childId.toString();
+        if (!visited.has(childKey)) {
+          queue.push({ id: childId, level: item.level + 1 });
+        }
+      }
+    }
+  }
+
+  return levels;
 }
 
 export default function DashboardPage() {
@@ -45,55 +104,31 @@ export default function DashboardPage() {
     return map;
   }, [allMembers]);
 
-  const selectedMember = selectedMemberId ? memberMap.get(selectedMemberId) ?? null : null;
+  const selectedMember = useMemo(
+    () => (selectedMemberId != null ? (memberMap.get(selectedMemberId) ?? null) : null),
+    [selectedMemberId, memberMap]
+  );
 
-  // Group downlines by level
-  const downlinesByLevel = useMemo(() => {
-    if (!selectedMember || downlineIds.length === 0) return {};
-    const levels: Record<number, MemberPublic[]> = {};
+  /**
+   * Group downlines by level (1–9).
+   * Always returns a record with all 9 level keys, even if some are empty arrays.
+   */
+  const downlinesByLevel = useMemo<Record<number, MemberPublic[]>>(() => {
+    if (!selectedMember) return buildEmptyLevels();
+    return buildDownlinesByLevel(selectedMember, memberMap);
+  }, [selectedMember, memberMap]);
 
-    // BFS to determine levels
-    const queue: Array<{ id: bigint; level: number }> = [];
-    selectedMember.directDownlines.forEach((id) => queue.push({ id, level: 1 }));
-
-    const visited = new Set<bigint>();
-    while (queue.length > 0) {
-      const item = queue.shift()!;
-      if (visited.has(item.id)) continue;
-      visited.add(item.id);
-
-      const member = memberMap.get(item.id);
-      if (!member) continue;
-
-      if (!levels[item.level]) levels[item.level] = [];
-      levels[item.level].push(member);
-
-      if (item.level < 9) {
-        member.directDownlines.forEach((childId) => {
-          if (!visited.has(childId)) {
-            queue.push({ id: childId, level: item.level + 1 });
-          }
-        });
-      }
-    }
-    return levels;
-  }, [selectedMember, downlineIds, memberMap]);
-
-  // Calculate total earnings
+  // Calculate total earnings across all 9 levels
   const totalEarnings = useMemo(() => {
     if (!selectedMember) return 0;
     let total = 0;
 
-    // Level 1: fee refund if 3 direct downlines
-    if (selectedMember.directDownlines.length >= 3) {
-      total += JOINING_FEE;
-    }
-
-    // Levels 2-9
-    for (let level = 2; level <= 9; level++) {
-      const membersAtLevel = downlinesByLevel[level] ?? [];
-      const count = membersAtLevel.length;
+    for (const level of ALL_LEVELS) {
       const rate = LEVEL_RATES[level];
+      const count =
+        level === 1
+          ? (selectedMember.directDownlines?.length ?? 0)
+          : (downlinesByLevel[level]?.length ?? 0);
       total += count * JOINING_FEE * (rate / 100);
     }
 
@@ -263,7 +298,7 @@ export default function DashboardPage() {
                 <span className="text-sm text-muted-foreground">Direct Recruits</span>
               </div>
               <p className="text-2xl font-bold text-foreground font-poppins">
-                {selectedMember.directDownlines.length} / 3
+                {selectedMember.directDownlines?.length ?? 0} / 3
               </p>
             </div>
           </div>

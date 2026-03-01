@@ -117,6 +117,13 @@ export interface MemberPublic {
     matrixPosition: MLMTreePosition;
 }
 export type MemberId = bigint;
+export interface LevelCommission {
+    levelPercentage: bigint;
+    totalLevelEarnings: bigint;
+    level: TreeLevel;
+    levelMembers: bigint;
+    commissionAmount: bigint;
+}
 export interface MLMTreePosition {
     memberId: MemberId;
     level: TreeLevel;
@@ -135,7 +142,9 @@ export enum UserRole {
 export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    calculateCommissions(_amount: bigint): Promise<Array<LevelCommission>>;
     checkMembershipStatuses(): Promise<void>;
+    deleteMember(memberId: MemberId): Promise<void>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getMember(id: MemberId): Promise<MemberPublic | null>;
@@ -179,6 +188,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async calculateCommissions(arg0: bigint): Promise<Array<LevelCommission>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.calculateCommissions(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.calculateCommissions(arg0);
+            return result;
+        }
+    }
     async checkMembershipStatuses(): Promise<void> {
         if (this.processError) {
             try {
@@ -190,6 +213,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.checkMembershipStatuses();
+            return result;
+        }
+    }
+    async deleteMember(arg0: MemberId): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteMember(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteMember(arg0);
             return result;
         }
     }

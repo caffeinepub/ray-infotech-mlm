@@ -1,8 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
-import type { MemberPublic, MemberRegistration, UserProfile } from '../backend';
-
-// ─── User Profile ────────────────────────────────────────────────────────────
+import type { MemberPublic, UserProfile, LevelCommission } from '../backend';
 
 export function useGetCallerUserProfile() {
   const { actor, isFetching: actorFetching } = useActor();
@@ -39,58 +37,40 @@ export function useSaveCallerUserProfile() {
   });
 }
 
-// ─── Role / Auth ──────────────────────────────────────────────────────────────
-
-export function useGetCallerUserRole() {
-  const { actor, isFetching: actorFetching } = useActor();
-
-  return useQuery<string>({
-    queryKey: ['callerUserRole'],
-    queryFn: async () => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.getCallerUserRole();
-    },
-    enabled: !!actor && !actorFetching,
-    retry: false,
-  });
-}
-
 export function useIsCallerAdmin() {
   const { actor, isFetching: actorFetching } = useActor();
 
   return useQuery<boolean>({
     queryKey: ['isCallerAdmin'],
     queryFn: async () => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.isCallerAdmin();
-    },
-    enabled: !!actor && !actorFetching,
-    retry: false,
-  });
-}
-
-// ─── Member Registration Data ─────────────────────────────────────────────────
-
-export function useGetMemberRegistrationData(principal: string | null) {
-  const { actor, isFetching: actorFetching } = useActor();
-
-  return useQuery<UserProfile | null>({
-    queryKey: ['memberRegistrationData', principal],
-    queryFn: async () => {
-      if (!actor || !principal) return null;
+      if (!actor) return false;
       try {
-        const { Principal } = await import('@dfinity/principal');
-        return actor.getMemberRegistrationData(Principal.fromText(principal));
+        const result = await actor.isCallerAdmin();
+        return result;
       } catch {
-        return null;
+        return false;
       }
     },
-    enabled: !!actor && !actorFetching && !!principal,
-    retry: false,
+    enabled: !!actor && !actorFetching,
+    staleTime: 30_000,
+    retry: 2,
   });
 }
 
-// ─── Members ──────────────────────────────────────────────────────────────────
+export function useGetCallerUserRole() {
+  const { actor, isFetching: actorFetching } = useActor();
+
+  return useQuery({
+    queryKey: ['callerUserRole'],
+    queryFn: async () => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.getCallerUserRole();
+    },
+    enabled: !!actor && !actorFetching,
+    staleTime: 30_000,
+    retry: 2,
+  });
+}
 
 export function useListMembers() {
   const { actor, isFetching: actorFetching } = useActor();
@@ -131,14 +111,17 @@ export function useGetSenderDownlines(senderId: bigint | null) {
   });
 }
 
-// ─── Register Member ──────────────────────────────────────────────────────────
-
 export function useRegisterMember() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (registration: MemberRegistration) => {
+    mutationFn: async (registration: {
+      name: string;
+      contactInfo: string;
+      sponsorId?: bigint;
+      uplineId?: bigint;
+    }) => {
       if (!actor) throw new Error('Actor not available');
       return actor.registerMember(registration);
     },
@@ -147,8 +130,6 @@ export function useRegisterMember() {
     },
   });
 }
-
-// ─── Admin Actions ────────────────────────────────────────────────────────────
 
 export function useMarkJoiningFeePaid() {
   const { actor } = useActor();
@@ -177,5 +158,33 @@ export function useCheckMembershipStatuses() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['members'] });
     },
+  });
+}
+
+export function useDeleteMember() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (memberId: bigint) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.deleteMember(memberId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['members'] });
+    },
+  });
+}
+
+export function useCalculateCommissions() {
+  const { actor, isFetching: actorFetching } = useActor();
+
+  return useQuery<LevelCommission[]>({
+    queryKey: ['commissions'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.calculateCommissions(BigInt(2750));
+    },
+    enabled: !!actor && !actorFetching,
   });
 }

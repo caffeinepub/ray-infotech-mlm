@@ -10,33 +10,22 @@ import {
   TableFooter,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { IndianRupee } from 'lucide-react';
+import { IndianRupee, Lock } from 'lucide-react';
 
 const JOINING_FEE = 2750;
-// Level 1 = fee refund, Levels 2-9 = 9%, 8%, 7%, 6%, 5%, 4%, 3%, 2%, 1%
-const LEVEL_RATES: Record<number, number> = {
-  1: 0, // special: fee refund
-  2: 9,
-  3: 8,
-  4: 7,
-  5: 6,
-  6: 5,
-  7: 4,
-  8: 3,
-  9: 1,
-};
 
-const LEVEL_MEMBER_COUNTS: Record<number, number> = {
-  1: 3,
-  2: 9,
-  3: 27,
-  4: 81,
-  5: 243,
-  6: 729,
-  7: 2187,
-  8: 6561,
-  9: 19683,
-};
+// Explicit 9-level config — never derived, never truncated
+const LEVEL_CONFIG: Array<{ level: number; rate: number; maxMembers: number }> = [
+  { level: 1, rate: 9,  maxMembers: 3 },
+  { level: 2, rate: 8,  maxMembers: 9 },
+  { level: 3, rate: 7,  maxMembers: 27 },
+  { level: 4, rate: 6,  maxMembers: 81 },
+  { level: 5, rate: 5,  maxMembers: 243 },
+  { level: 6, rate: 4,  maxMembers: 729 },
+  { level: 7, rate: 3,  maxMembers: 2187 },
+  { level: 8, rate: 2,  maxMembers: 6561 },
+  { level: 9, rate: 1,  maxMembers: 19683 },
+];
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-IN', {
@@ -55,26 +44,17 @@ export default function CommissionHistoryTable({
   member,
   downlinesByLevel,
 }: CommissionHistoryTableProps) {
-  const rows = Array.from({ length: 9 }, (_, i) => {
-    const level = i + 1;
-    const membersAtLevel = level === 1 ? member.directDownlines.length : (downlinesByLevel[level]?.length ?? 0);
-    const maxMembers = LEVEL_MEMBER_COUNTS[level];
-    const rate = LEVEL_RATES[level];
+  // Build exactly 9 rows — one per level config entry
+  const rows = LEVEL_CONFIG.map(({ level, rate, maxMembers }) => {
+    // Level 1 uses direct downlines; levels 2–9 use BFS-populated map
+    const membersAtLevel: number =
+      level === 1
+        ? (member.directDownlines?.length ?? 0)
+        : (downlinesByLevel?.[level]?.length ?? 0);
 
-    let commission = 0;
-    let commissionLabel = '';
-    let maxCommission = 0;
-
-    if (level === 1) {
-      commission = membersAtLevel >= 3 ? JOINING_FEE : 0;
-      maxCommission = JOINING_FEE;
-      commissionLabel = 'Fee Refund';
-    } else {
-      const totalCollection = membersAtLevel * JOINING_FEE;
-      commission = totalCollection * (rate / 100);
-      maxCommission = maxMembers * JOINING_FEE * (rate / 100);
-      commissionLabel = `${rate}%`;
-    }
+    const totalCollection = membersAtLevel * JOINING_FEE;
+    const commission = totalCollection * (rate / 100);
+    const maxCommission = maxMembers * JOINING_FEE * (rate / 100);
 
     return {
       level,
@@ -83,8 +63,8 @@ export default function CommissionHistoryTable({
       rate,
       commission,
       maxCommission,
-      commissionLabel,
-      isUnlocked: membersAtLevel > 0 || (level === 1 && membersAtLevel >= 3),
+      totalCollection,
+      isUnlocked: membersAtLevel > 0,
     };
   });
 
@@ -99,96 +79,88 @@ export default function CommissionHistoryTable({
           Level-wise Commission Breakdown
         </h3>
         <p className="text-sm text-muted-foreground mt-1">
-          Complete 9-level payout structure with current and maximum earnings
+          Complete 9-level payout structure — Levels 1 through 9 (9% down to 1%)
         </p>
       </div>
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Level</TableHead>
-              <TableHead>Members</TableHead>
-              <TableHead>Max Members</TableHead>
-              <TableHead>Rate</TableHead>
-              <TableHead>Total Collection</TableHead>
-              <TableHead>Commission Earned</TableHead>
-              <TableHead>Max Commission</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead className="whitespace-nowrap">Level</TableHead>
+              <TableHead className="whitespace-nowrap">Rate</TableHead>
+              <TableHead className="whitespace-nowrap">Members</TableHead>
+              <TableHead className="whitespace-nowrap">Max Members</TableHead>
+              <TableHead className="whitespace-nowrap">Total Collection</TableHead>
+              <TableHead className="whitespace-nowrap">Commission Earned</TableHead>
+              <TableHead className="whitespace-nowrap">Max Commission</TableHead>
+              <TableHead className="whitespace-nowrap">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((row) => (
               <TableRow
-                key={row.level}
-                className={row.membersAtLevel === 0 ? 'opacity-50' : ''}
+                key={`level-row-${row.level}`}
+                className={!row.isUnlocked ? 'opacity-75' : ''}
               >
                 <TableCell>
-                  <span className="font-semibold text-foreground">Level {row.level}</span>
-                </TableCell>
-                <TableCell>
-                  <span className="font-medium">{row.membersAtLevel}</span>
-                  <span className="text-muted-foreground text-xs"> / {row.maxMembers}</span>
-                </TableCell>
-                <TableCell className="text-muted-foreground text-sm">
-                  {row.maxMembers.toLocaleString('en-IN')}
+                  <div className="flex items-center gap-1.5">
+                    {!row.isUnlocked && <Lock className="w-3 h-3 text-muted-foreground shrink-0" />}
+                    <span className="font-semibold text-foreground whitespace-nowrap">
+                      Level {row.level}
+                    </span>
+                  </div>
                 </TableCell>
                 <TableCell>
                   <Badge
                     variant="outline"
-                    className={
-                      row.level === 1
-                        ? 'border-gold-500/50 text-gold-400'
-                        : 'border-blue-500/50 text-blue-400'
-                    }
+                    className={`font-bold whitespace-nowrap ${
+                      row.isUnlocked
+                        ? 'text-gold-400 border-gold-500/30 bg-gold-500/10'
+                        : 'text-muted-foreground border-border'
+                    }`}
                   >
-                    {row.commissionLabel}
+                    {row.rate}%
                   </Badge>
                 </TableCell>
-                <TableCell className="text-sm">
-                  {row.level === 1
-                    ? '—'
-                    : formatCurrency(row.membersAtLevel * JOINING_FEE)}
+                <TableCell>
+                  <span className="font-medium">{row.membersAtLevel}</span>
+                  <span className="text-muted-foreground text-xs">
+                    {' '}/ {row.maxMembers.toLocaleString('en-IN')}
+                  </span>
+                </TableCell>
+                <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                  {row.maxMembers.toLocaleString('en-IN')}
+                </TableCell>
+                <TableCell className="text-sm whitespace-nowrap">
+                  {formatCurrency(row.totalCollection)}
                 </TableCell>
                 <TableCell>
                   <span
-                    className={`font-semibold ${
+                    className={`font-semibold whitespace-nowrap ${
                       row.commission > 0 ? 'text-gold-400' : 'text-muted-foreground'
                     }`}
                   >
-                    {row.commission > 0 ? formatCurrency(row.commission) : '—'}
+                    {formatCurrency(row.commission)}
                   </span>
                 </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
+                <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
                   {formatCurrency(row.maxCommission)}
                 </TableCell>
                 <TableCell>
-                  {row.level === 1 ? (
+                  {!row.isUnlocked ? (
                     <Badge
-                      variant={row.membersAtLevel >= 3 ? 'default' : 'outline'}
-                      className={
-                        row.membersAtLevel >= 3
-                          ? 'bg-green-500/20 text-green-400 border-green-500/30'
-                          : 'border-yellow-500/50 text-yellow-500'
-                      }
+                      variant="outline"
+                      className="text-muted-foreground border-border text-xs whitespace-nowrap"
                     >
-                      {row.membersAtLevel >= 3 ? 'Refunded' : `${row.membersAtLevel}/3`}
+                      Locked
+                    </Badge>
+                  ) : row.membersAtLevel >= row.maxMembers ? (
+                    <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs whitespace-nowrap">
+                      Full
                     </Badge>
                   ) : (
-                    <Badge
-                      variant={row.membersAtLevel > 0 ? 'default' : 'outline'}
-                      className={
-                        row.membersAtLevel === row.maxMembers
-                          ? 'bg-gold-500/20 text-gold-400 border-gold-500/30'
-                          : row.membersAtLevel > 0
-                          ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                          : 'text-muted-foreground'
-                      }
-                    >
-                      {row.membersAtLevel === row.maxMembers
-                        ? 'Complete'
-                        : row.membersAtLevel > 0
-                        ? 'Active'
-                        : 'Pending'}
+                    <Badge className="bg-gold-500/20 text-gold-400 border-gold-500/30 text-xs whitespace-nowrap">
+                      Active
                     </Badge>
                   )}
                 </TableCell>
@@ -197,18 +169,16 @@ export default function CommissionHistoryTable({
           </TableBody>
           <TableFooter>
             <TableRow className="bg-muted/30">
-              <TableCell colSpan={5} className="font-semibold">
-                Total Earnings
+              <TableCell colSpan={5} className="font-semibold text-foreground">
+                Total Commission (All 9 Levels)
               </TableCell>
               <TableCell>
-                <span className="font-bold text-gold-400 text-base">
+                <span className="font-bold text-gold-400 whitespace-nowrap">
                   {formatCurrency(totalCommission)}
                 </span>
               </TableCell>
-              <TableCell>
-                <span className="font-bold text-foreground text-base">
-                  {formatCurrency(totalMaxCommission)}
-                </span>
+              <TableCell className="text-muted-foreground text-sm font-medium whitespace-nowrap">
+                {formatCurrency(totalMaxCommission)}
               </TableCell>
               <TableCell />
             </TableRow>

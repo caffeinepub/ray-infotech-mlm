@@ -1,99 +1,25 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-26T16:37:39.437Z",
+  "generatedAt": "2026-03-01T19:59:19.856Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 7,
-    "implemented": 4,
+    "total": 1,
+    "implemented": 1,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Implement the backend data model and logic for the 3×3 matrix MLM system: store members with fields (id, name, mobile, email, sponsorId, uplineId, position in matrix, joinDate, status: active/debarred/suspended/deleted, paymentStatus: pending/paid), enforce a maximum of 3 direct downline slots per member, and auto-assign new members to the next available slot under their sponsor using breadth-first placement.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-2",
-        "summary": "Implement backend commission calculation: joining fee is ₹2,750 per member. Level 1 (3 members): full fee refund of ₹2,750. Levels 2–9: calculate commissions as (number of members at that depth) × ₹2,750 × percentage (Level 2: 9%, Level 3: 8%, Level 4: 7%, Level 5: 6%, Level 6: 5%, Level 7: 4%, Level 8: 3%, Level 9: 1%). Expose a query to return per-level earnings and total balance for any given member.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-3",
-        "summary": "Implement backend member management operations: (a) admin can add a new member directly, (b) members can self-register with a sponsor ID, (c) admin can debar or suspend a member, (d) admin can delete a member. When a member is removed or debarred, reassign their direct downline children to the removed member's own upline, filling the vacated slot first.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-4",
-        "summary": "Build an individual member dashboard page showing: (a) a summary card with total balance and fee refund status, (b) a per-level commission breakdown table (levels 1–9 with member count, percentage, and computed earning), (c) a visual 3×3 matrix tree showing their downline up to 9 levels with member name/status on each node and empty slot indicators, (d) quick stats (total downline count, levels filled).",
+        "summary": "Fix the admin role check in the delete member flow so that authenticated admin users can successfully delete members without seeing the 'only admin can delete' error message. The permission guard must correctly identify the current user as admin before blocking the action.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/DashboardPage.tsx",
-          "frontend/src/components/EarningsSummary.tsx",
-          "frontend/src/components/CommissionHistoryTable.tsx",
-          "frontend/src/components/MatrixTreeVisualization.tsx",
-          "frontend/src/hooks/useQueries.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/DashboardPage.tsx",
-          "frontend/src/components/EarningsSummary.tsx",
-          "frontend/src/components/CommissionHistoryTable.tsx",
-          "frontend/src/components/MatrixTreeVisualization.tsx",
-          "frontend/src/hooks/useQueries.ts"
-        ]
-      },
-      {
-        "id": "REQ-5",
-        "summary": "Build an admin panel page with: (a) a searchable, paginated members table showing name, mobile, email, sponsor, status, payment status, and join date, (b) action buttons per member row to mark fee as paid, debar, suspend, or delete a member, (c) platform statistics cards (total members, total fees collected, total refunds issued, total commissions paid), (d) an 'Add Member' form for admin-initiated registration.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/AdminPanel.tsx",
-          "frontend/src/components/PlatformStatistics.tsx",
-          "frontend/src/components/AddMemberForm.tsx",
           "frontend/src/pages/AdminPanel.tsx",
           "frontend/src/hooks/useQueries.ts"
         ],
         "matchedFiles": [
           "frontend/src/pages/AdminPanel.tsx",
-          "frontend/src/components/PlatformStatistics.tsx",
-          "frontend/src/components/AddMemberForm.tsx",
-          "frontend/src/pages/AdminPanel.tsx",
-          "frontend/src/hooks/useQueries.ts"
-        ]
-      },
-      {
-        "id": "REQ-6",
-        "summary": "Build a self-registration page where a new member can enter their name, mobile number, email, and sponsor ID, validate the sponsor ID exists in the system, and submit to create their account pending payment approval.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/RegisterPage.tsx",
-          "frontend/src/hooks/useQueries.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/RegisterPage.tsx",
-          "frontend/src/hooks/useQueries.ts"
-        ]
-      },
-      {
-        "id": "REQ-7",
-        "summary": "Ensure the member login flow (via Internet Identity) correctly identifies whether the authenticated user is a registered member or admin, redirects members to their dashboard, redirects admins to the admin panel, and redirects unregistered users to the registration page.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/LoginPage.tsx",
-          "frontend/src/App.tsx",
-          "frontend/src/hooks/useQueries.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/LoginPage.tsx",
-          "frontend/src/App.tsx",
           "frontend/src/hooks/useQueries.ts"
         ]
       }
@@ -103,26 +29,11 @@
     "backend/main.mo",
     "backend/migration.mo",
     "build-request.json",
-    "build-template/README.md",
-    "caffeine.lock.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/App.tsx",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
-    "frontend/src/components/AddMemberForm.tsx",
-    "frontend/src/components/CommissionHistoryTable.tsx",
-    "frontend/src/components/EarningsSummary.tsx",
-    "frontend/src/components/MatrixTreeVisualization.tsx",
-    "frontend/src/components/PlatformStatistics.tsx",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
     "frontend/src/hooks/useQueries.ts",
     "frontend/src/pages/AdminPanel.tsx",
-    "frontend/src/pages/DashboardPage.tsx",
-    "frontend/src/pages/LoginPage.tsx",
-    "frontend/src/pages/RegisterPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

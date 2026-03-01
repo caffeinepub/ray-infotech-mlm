@@ -1,151 +1,38 @@
 {
   "kind": "build_request",
-  "title": "Build core MLM member dashboard and admin panel (Phase 1)",
-  "projectName": "RAY INFOTECH MLM",
-  "priority": "normal",
+  "title": "Fix admin delete permission check blocking admin users",
+  "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Implement the backend data model and logic for the 3×3 matrix MLM system: store members with fields (id, name, mobile, email, sponsorId, uplineId, position in matrix, joinDate, status: active/debarred/suspended/deleted, paymentStatus: pending/paid), enforce a maximum of 3 direct downline slots per member, and auto-assign new members to the next available slot under their sponsor using breadth-first placement.",
-      "target": "backend",
+      "text": "Fix the admin role check in the delete member flow so that authenticated admin users can successfully delete members without seeing the 'only admin can delete' error message. The permission guard must correctly identify the current user as admin before blocking the action.",
+      "target": "both",
       "source": {
         "messageIds": [
           "msg-1"
         ],
         "quotes": [
-          "Build it"
+          "It's not working",
+          "Prompting message only admin can delete",
+          "As admin I am trying still it's prompting message only admin can delete"
         ]
       },
       "acceptanceCriteria": [
-        "Each member node has at most 3 direct children in the matrix",
-        "New members are placed in the correct next-available slot under their sponsor",
-        "Member status can be active, debarred, suspended, or deleted",
-        "Payment status tracks pending vs paid joining fee"
-      ]
-    },
-    {
-      "id": "REQ-2",
-      "text": "Implement backend commission calculation: joining fee is ₹2,750 per member. Level 1 (3 members): full fee refund of ₹2,750. Levels 2–9: calculate commissions as (number of members at that depth) × ₹2,750 × percentage (Level 2: 9%, Level 3: 8%, Level 4: 7%, Level 5: 6%, Level 6: 5%, Level 7: 4%, Level 8: 3%, Level 9: 1%). Expose a query to return per-level earnings and total balance for any given member.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "9-Level Payout Structure"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Level 1 earnings equal ₹2,750 (fee refund) when 3 direct downline members are present",
-        "Levels 2–9 compute correctly using the defined percentages",
-        "Per-level breakdown and total balance are returned for any member ID"
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "text": "Implement backend member management operations: (a) admin can add a new member directly, (b) members can self-register with a sponsor ID, (c) admin can debar or suspend a member, (d) admin can delete a member. When a member is removed or debarred, reassign their direct downline children to the removed member's own upline, filling the vacated slot first.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "Admin Powers: Omit, delete, or debar/suspend any member",
-          "Downline Reassignment"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Admin can create a member record directly",
-        "Self-registration assigns sponsor and places member in matrix",
-        "Debarring or suspending updates member status without removing their record",
-        "Deleting a member triggers downline reassignment to the deleted member's upline"
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "text": "Build an individual member dashboard page showing: (a) a summary card with total balance and fee refund status, (b) a per-level commission breakdown table (levels 1–9 with member count, percentage, and computed earning), (c) a visual 3×3 matrix tree showing their downline up to 9 levels with member name/status on each node and empty slot indicators, (d) quick stats (total downline count, levels filled).",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "Member Dashboard — earnings, downline tree, per-level amounts, total balance"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Dashboard displays total earnings and fee refund status",
-        "Commission table shows all 9 levels with correct values",
-        "Matrix tree renders up to 9 levels with member cards and empty slots",
-        "Quick stats reflect current downline count"
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "text": "Build an admin panel page with: (a) a searchable, paginated members table showing name, mobile, email, sponsor, status, payment status, and join date, (b) action buttons per member row to mark fee as paid, debar, suspend, or delete a member, (c) platform statistics cards (total members, total fees collected, total refunds issued, total commissions paid), (d) an 'Add Member' form for admin-initiated registration.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "Admin Panel — add/manage members, view all calculations"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Members table is searchable by name or ID and paginated",
-        "Admin can mark payment as paid from the table row",
-        "Admin can debar, suspend, or delete any member from the table row",
-        "Platform statistics cards update to reflect current data",
-        "Add Member form submits and places the new member in the matrix"
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "text": "Build a self-registration page where a new member can enter their name, mobile number, email, and sponsor ID, validate the sponsor ID exists in the system, and submit to create their account pending payment approval.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "Dual Registration — admin-added + self-registration"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Registration form validates all required fields",
-        "Sponsor ID is validated against existing members before submission",
-        "Successful registration shows a confirmation message and pending payment status",
-        "Invalid sponsor ID shows a clear error message"
-      ]
-    },
-    {
-      "id": "REQ-7",
-      "text": "Ensure the member login flow (via Internet Identity) correctly identifies whether the authenticated user is a registered member or admin, redirects members to their dashboard, redirects admins to the admin panel, and redirects unregistered users to the registration page.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "Individual Member Login"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Authenticated members land on their personal dashboard",
-        "Authenticated admins land on the admin panel",
-        "Unregistered authenticated users are prompted to register"
+        "When logged in as an admin, clicking the delete member button does NOT show 'only admin can delete' or any unauthorized error message.",
+        "The delete confirmation dialog appears correctly for admin users.",
+        "Confirming deletion in the dialog successfully calls the backend deleteMember function and removes the member.",
+        "Non-admin users still see an appropriate access-denied message when attempting to delete.",
+        "The backend role check for deleteMember correctly validates admin principal/role before rejecting the request."
       ]
     }
   ],
   "constraints": [
-    "Do not implement Stripe payment integration or payment proof upload in this phase — payment features will be added in a follow-up build",
-    "Keep all Motoko logic in the single backend/main.mo actor file"
+    "Do not change the overall AdminPanel layout or other admin features.",
+    "Do not modify files under frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui."
   ],
   "nonGoals": [
-    "Stripe online payment integration (deferred to next phase)",
-    "Payment proof upload and admin approval workflow (deferred to next phase)",
-    "Real-time notifications or WebSockets"
+    "Adding new admin features or changing the member management UI beyond the delete fix.",
+    "Changing the commission or MLM tree logic."
   ],
   "imageRequirements": {
     "required": [],

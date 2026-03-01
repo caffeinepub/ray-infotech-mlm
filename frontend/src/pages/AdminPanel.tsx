@@ -1,27 +1,17 @@
 import React, { useState, useMemo } from 'react';
-import { useListMembers, useMarkJoiningFeePaid, useCheckMembershipStatuses, useRegisterMember } from '../hooks/useQueries';
-import { MemberPublic } from '../backend';
-import PlatformStatistics from '../components/PlatformStatistics';
-import AddMemberForm from '../components/AddMemberForm';
+import { toast } from 'sonner';
+import { Trash2, CheckCircle, RefreshCw, Search, Loader2, ShieldAlert, UserPlus } from 'lucide-react';
+import {
+  useListMembers,
+  useMarkJoiningFeePaid,
+  useCheckMembershipStatuses,
+  useDeleteMember,
+  useIsCallerAdmin,
+} from '../hooks/useQueries';
+import type { MemberPublic } from '../backend';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,315 +21,331 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Search, UserPlus, CheckCircle, RefreshCw, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import PlatformStatistics from '../components/PlatformStatistics';
+import AddMemberForm from '../components/AddMemberForm';
 
-const PAGE_SIZE = 15;
-
-function formatDate(timestamp: bigint): string {
-  const ms = Number(timestamp) / 1_000_000;
-  return new Date(ms).toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
+// ── MemberRow ────────────────────────────────────────────────────────────────
+interface MemberRowProps {
+  member: MemberPublic;
+  onMarkPaid: (id: bigint) => Promise<void>;
+  isMarkingPaid: boolean;
 }
 
-export default function AdminPanel() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [addMemberOpen, setAddMemberOpen] = useState(false);
+function MemberRow({ member, onMarkPaid, isMarkingPaid }: MemberRowProps) {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const deleteMemberMutation = useDeleteMember();
 
-  const { data: allMembers = [], isLoading: membersLoading } = useListMembers();
-  const markPaidMutation = useMarkJoiningFeePaid();
-  const checkStatusMutation = useCheckMembershipStatuses();
-
-  const filteredMembers = useMemo(() => {
-    if (!searchQuery.trim()) return allMembers;
-    const q = searchQuery.toLowerCase();
-    return allMembers.filter(
-      (m) =>
-        m.name.toLowerCase().includes(q) ||
-        m.id.toString().includes(q) ||
-        m.memberIdStr.toLowerCase().includes(q) ||
-        m.contactInfo.toLowerCase().includes(q)
-    );
-  }, [allMembers, searchQuery]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredMembers.length / PAGE_SIZE));
-  const paginatedMembers = filteredMembers.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
-  );
-
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-    setCurrentPage(1);
-  };
-
-  const handleMarkPaid = async (memberId: bigint) => {
+  const handleDeleteConfirm = async () => {
     try {
-      await markPaidMutation.mutateAsync(memberId);
-    } catch (err) {
-      console.error('Failed to mark as paid:', err);
+      await deleteMemberMutation.mutateAsync(member.id);
+      toast.success(`Member ${member.memberIdStr} deleted successfully`);
+      setDeleteDialogOpen(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Delete failed: ${msg}`);
+      setDeleteDialogOpen(false);
     }
   };
 
-  const getSponsorName = (sponsorId: bigint | undefined): string => {
-    if (!sponsorId) return '—';
-    const sponsor = allMembers.find((m) => m.id === sponsorId);
-    return sponsor ? sponsor.name : `#${sponsorId}`;
+  return (
+    <>
+      <tr className="border-b border-border hover:bg-muted/30 transition-colors">
+        <td className="px-4 py-3 font-mono text-sm text-gold-400">{member.memberIdStr}</td>
+        <td className="px-4 py-3 font-medium">{member.name}</td>
+        <td className="px-4 py-3 text-sm text-muted-foreground">{member.contactInfo}</td>
+        <td className="px-4 py-3">
+          {member.joiningFeePaid ? (
+            <Badge variant="default" className="bg-green-700 text-white">Paid</Badge>
+          ) : (
+            <Badge variant="destructive">Unpaid</Badge>
+          )}
+        </td>
+        <td className="px-4 py-3">
+          {member.isCancelled ? (
+            <Badge variant="outline" className="text-destructive border-destructive">Cancelled</Badge>
+          ) : (
+            <Badge variant="outline" className="text-green-600 border-green-600">Active</Badge>
+          )}
+        </td>
+        <td className="px-4 py-3 text-sm">{member.directDownlines.length}/3</td>
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-2">
+            {!member.joiningFeePaid && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onMarkPaid(member.id)}
+                disabled={isMarkingPaid}
+                className="text-xs border-gold-500 text-gold-400 hover:bg-gold-500/10"
+              >
+                {isMarkingPaid ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                )}
+                Mark Paid
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => setDeleteDialogOpen(true)}
+              disabled={deleteMemberMutation.isPending}
+              className="text-xs"
+            >
+              {deleteMemberMutation.isPending ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Trash2 className="h-3 w-3" />
+              )}
+            </Button>
+          </div>
+        </td>
+      </tr>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Member</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{member.name}</strong> ({member.memberIdStr})?
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMemberMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={deleteMemberMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMemberMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" />Deleting…</>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+// ── AdminPanel ───────────────────────────────────────────────────────────────
+const PAGE_SIZE = 10;
+
+export default function AdminPanel() {
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [markingPaidId, setMarkingPaidId] = useState<bigint | null>(null);
+  const [showAddMember, setShowAddMember] = useState(false);
+
+  const { data: isAdmin, isLoading: adminLoading } = useIsCallerAdmin();
+  const { data: members = [], isLoading: membersLoading, refetch } = useListMembers();
+  const markPaidMutation = useMarkJoiningFeePaid();
+  const checkStatusesMutation = useCheckMembershipStatuses();
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return members.filter(
+      (m) =>
+        m.name.toLowerCase().includes(q) ||
+        m.memberIdStr.toLowerCase().includes(q) ||
+        m.contactInfo.toLowerCase().includes(q),
+    );
+  }, [members, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const handleMarkPaid = async (id: bigint) => {
+    setMarkingPaidId(id);
+    try {
+      await markPaidMutation.mutateAsync(id);
+      toast.success('Joining fee marked as paid');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Failed: ${msg}`);
+    } finally {
+      setMarkingPaidId(null);
+    }
   };
 
+  const handleCheckStatuses = async () => {
+    try {
+      await checkStatusesMutation.mutateAsync();
+      toast.success('Membership statuses updated');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Failed: ${msg}`);
+    }
+  };
+
+  // Show loading while checking admin status
+  if (adminLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-gold-400" />
+      </div>
+    );
+  }
+
+  // Show access denied if not admin
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4 p-8">
+          <ShieldAlert className="h-16 w-16 text-destructive mx-auto" />
+          <h2 className="text-2xl font-bold text-foreground">Access Denied</h2>
+          <p className="text-muted-foreground max-w-sm">
+            You do not have admin privileges to access this panel. Please log in with an admin account.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground font-poppins">Admin Panel</h1>
-          <p className="text-muted-foreground mt-1">Manage members and monitor platform activity</p>
+    <main className="min-h-screen bg-background py-8 px-4">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Admin Panel</h1>
+            <p className="text-muted-foreground mt-1">Manage members and platform settings</p>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              onClick={() => setShowAddMember((v) => !v)}
+              className="border-gold-500 text-gold-400 hover:bg-gold-500/10"
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              {showAddMember ? 'Hide Form' : 'Add Member'}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleCheckStatuses}
+              disabled={checkStatusesMutation.isPending}
+              className="border-gold-500 text-gold-400 hover:bg-gold-500/10"
+            >
+              {checkStatusesMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Check Statuses
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => refetch()}
+              disabled={membersLoading}
+              className="border-gold-500 text-gold-400 hover:bg-gold-500/10"
+            >
+              {membersLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Refresh
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => checkStatusMutation.mutate()}
-            disabled={checkStatusMutation.isPending}
-            className="gap-2"
-          >
-            <RefreshCw className={`w-4 h-4 ${checkStatusMutation.isPending ? 'animate-spin' : ''}`} />
-            Check Statuses
-          </Button>
-          <Dialog open={addMemberOpen} onOpenChange={setAddMemberOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold gap-2">
-                <UserPlus className="w-4 h-4" />
-                Add Member
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle className="font-poppins">Add New Member</DialogTitle>
-              </DialogHeader>
-              <AddMemberForm onSuccess={() => setAddMemberOpen(false)} />
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
 
-      {/* Platform Statistics */}
-      <div className="mb-8">
+        {/* Platform Statistics */}
         <PlatformStatistics />
-      </div>
 
-      {/* Members Table */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <div className="p-6 border-b border-border">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">
-              All Members
-              <span className="ml-2 text-sm font-normal text-muted-foreground">
-                ({filteredMembers.length} total)
-              </span>
+        {/* Add Member Form */}
+        {showAddMember && (
+          <div className="bg-card border border-border rounded-xl p-6">
+            <h2 className="text-xl font-semibold mb-4">Register New Member</h2>
+            <AddMemberForm onSuccess={() => setShowAddMember(false)} />
+          </div>
+        )}
+
+        {/* Members Table */}
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center gap-3">
+            <h2 className="text-xl font-semibold flex-1">
+              Members ({filtered.length})
             </h2>
             <div className="relative w-full sm:w-72">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by name, ID, contact..."
-                value={searchQuery}
-                onChange={handleSearch}
+                placeholder="Search by name, ID, contact…"
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 className="pl-9"
               />
             </div>
           </div>
-        </div>
 
-        {membersLoading ? (
-          <div className="p-6 space-y-3">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <Skeleton key={i} className="h-12 rounded-lg" />
-            ))}
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="font-semibold">Member ID</TableHead>
-                    <TableHead className="font-semibold">Name</TableHead>
-                    <TableHead className="font-semibold">Contact</TableHead>
-                    <TableHead className="font-semibold">Sponsor</TableHead>
-                    <TableHead className="font-semibold">Status</TableHead>
-                    <TableHead className="font-semibold">Payment</TableHead>
-                    <TableHead className="font-semibold">Joined</TableHead>
-                    <TableHead className="font-semibold">Downlines</TableHead>
-                    <TableHead className="font-semibold text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedMembers.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
-                        No members found
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    paginatedMembers.map((member) => (
-                      <MemberRow
-                        key={member.id.toString()}
-                        member={member}
-                        onMarkPaid={handleMarkPaid}
-                        markPaidPending={markPaidMutation.isPending}
-                        getSponsorName={getSponsorName}
-                      />
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+          {membersLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-gold-400" />
             </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-border">
-                <p className="text-sm text-muted-foreground">
-                  Page {currentPage} of {totalPages}
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-interface MemberRowProps {
-  member: MemberPublic;
-  onMarkPaid: (id: bigint) => void;
-  markPaidPending: boolean;
-  getSponsorName: (id: bigint | undefined) => string;
-}
-
-function MemberRow({ member, onMarkPaid, markPaidPending, getSponsorName }: MemberRowProps) {
-  const contactParts = member.contactInfo.includes('|')
-    ? member.contactInfo.split('|')
-    : [member.contactInfo, ''];
-
-  return (
-    <TableRow className={member.isCancelled ? 'opacity-60' : ''}>
-      <TableCell>
-        <span className="font-mono text-xs text-gold-400 font-semibold">{member.memberIdStr}</span>
-      </TableCell>
-      <TableCell>
-        <div className="font-medium text-sm">{member.name}</div>
-      </TableCell>
-      <TableCell>
-        <div className="text-xs text-muted-foreground">
-          <div>{contactParts[0]}</div>
-          {contactParts[1] && <div>{contactParts[1]}</div>}
-        </div>
-      </TableCell>
-      <TableCell>
-        <span className="text-sm text-muted-foreground">
-          {getSponsorName(member.sponsorId)}
-        </span>
-      </TableCell>
-      <TableCell>
-        <Badge variant={member.isCancelled ? 'destructive' : 'default'} className="text-xs">
-          {member.isCancelled ? 'Cancelled' : 'Active'}
-        </Badge>
-      </TableCell>
-      <TableCell>
-        {member.joiningFeePaid ? (
-          <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">
-            Paid
-          </Badge>
-        ) : (
-          <Badge variant="outline" className="border-yellow-500/50 text-yellow-500 text-xs">
-            Pending
-          </Badge>
-        )}
-      </TableCell>
-      <TableCell>
-        <span className="text-xs text-muted-foreground">
-          {formatDate(member.registrationTimestamp)}
-        </span>
-      </TableCell>
-      <TableCell>
-        <span className="text-sm font-medium">{member.directDownlines.length} / 3</span>
-      </TableCell>
-      <TableCell>
-        <div className="flex items-center justify-end gap-1">
-          {!member.joiningFeePaid && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 text-xs gap-1 border-green-500/50 text-green-400 hover:bg-green-500/10"
-              onClick={() => onMarkPaid(member.id)}
-              disabled={markPaidPending}
-            >
-              <CheckCircle className="w-3 h-3" />
-              Mark Paid
-            </Button>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground">
+              {search ? 'No members match your search.' : 'No members registered yet.'}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/40">
+                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Member ID</th>
+                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Name</th>
+                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Contact</th>
+                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Fee</th>
+                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Status</th>
+                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Downlines</th>
+                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginated.map((member) => (
+                    <MemberRow
+                      key={member.id.toString()}
+                      member={member}
+                      onMarkPaid={handleMarkPaid}
+                      isMarkingPaid={markingPaidId === member.id && markPaidMutation.isPending}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs gap-1 border-destructive/50 text-destructive hover:bg-destructive/10"
-                disabled={member.isCancelled}
-              >
-                <AlertTriangle className="w-3 h-3" />
-                Cancel
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Cancel Member?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will cancel <strong>{member.name}</strong>'s membership ({member.memberIdStr}).
-                  Their downline members will be reassigned to the next upline level.
-                  This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Keep Member</AlertDialogCancel>
-                <AlertDialogAction
-                  className="bg-destructive hover:bg-destructive/90"
-                  onClick={() => {
-                    // Note: Backend doesn't have explicit cancel/debar endpoint
-                    // checkMembershipStatuses handles expiry; this is a placeholder
-                    alert('Cancel/debar functionality requires backend update. Use "Check Statuses" to expire overdue members.');
-                  }}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+              <span className="text-sm text-muted-foreground">
+                Page {page} of {totalPages}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
                 >
-                  Cancel Membership
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                  Previous
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
-      </TableCell>
-    </TableRow>
+      </div>
+    </main>
   );
 }

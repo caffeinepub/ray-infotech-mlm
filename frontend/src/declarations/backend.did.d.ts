@@ -10,6 +10,13 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface LevelCommission {
+  'levelPercentage' : bigint,
+  'totalLevelEarnings' : bigint,
+  'level' : TreeLevel,
+  'levelMembers' : bigint,
+  'commissionAmount' : bigint,
+}
 export interface MLMTreePosition {
   'memberId' : MemberId,
   'level' : TreeLevel,
@@ -51,7 +58,9 @@ export type UserRole = { 'admin' : null } |
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'calculateCommissions' : ActorMethod<[bigint], Array<LevelCommission>>,
   'checkMembershipStatuses' : ActorMethod<[], undefined>,
+  'deleteMember' : ActorMethod<[MemberId], undefined>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getMember' : ActorMethod<[MemberId], [] | [MemberPublic]>,
