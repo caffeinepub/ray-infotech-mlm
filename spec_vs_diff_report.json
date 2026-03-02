@@ -1,12 +1,22 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-03-02T19:23:10.171Z",
-  "summary": "The diff implements the required fix for REQ-1. The AdminPanel.tsx has been updated to: show a loading spinner while identity/actor is initializing, prompt unauthenticated users to log in instead of showing access denied, and render admin content for authenticated users. The useQueries.ts hook was updated so useIsCallerAdmin only runs with a real (non-anonymous) identity. The App.tsx blocks route rendering until identity is fully restored. All immutable files were not modified. The requirements appear to be substantially addressed, though the diff is truncated so full verification of non-admin user handling is partially inferred from the file summary.",
-  "missing_requirements": [],
+  "generatedAt": "2026-03-02T19:50:14.073Z",
+  "summary": "The diff modifies backend/main.mo and frontend/src/pages/AdminPanel.tsx. REQ-3 (frontend warning banner with Reload button) is clearly implemented in AdminPanel.tsx. REQ-2 (backend audit of getAllMembers to preserve stable member data) has partial evidence in backend/main.mo but the truncation prevents full verification of postupgrade/initialization logic fixes.",
+  "missing_requirements": [
+    {
+      "id": "REQ-2",
+      "requirement": "Audit getAllMembers to ensure stable member data is preserved across upgrades; fix any initialization or postupgrade logic that clears or resets the members stable data structure.",
+      "reason": "The backend/main.mo diff is truncated and does not show the getAllMembers function, postupgrade hooks, or any stable variable declarations for members. There is no visible evidence that initialization logic was audited or fixed to prevent clearing stable member data.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    }
+  ],
   "hallucinated_features": [],
-  "confidence": 0.82,
+  "confidence": 0.5,
   "changed_files": [
+    "backend/main.mo",
     "frontend-file-summaries.txt",
     "frontend/src/pages/AdminPanel.tsx",
     "project_state.json"

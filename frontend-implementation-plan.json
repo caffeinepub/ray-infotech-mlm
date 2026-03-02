@@ -1,23 +1,27 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Remove access denied from admin panel page",
+  "title": "Recover and display members data after deployment issues",
   "requirements": [
     {
-      "id": "REQ-1",
-      "summary": "Fix admin panel to prevent authenticated admin users from seeing 'access denied' messages by ensuring the admin role check waits for full authentication and actor initialization before evaluating privileges",
+      "id": "REQ-3",
+      "summary": "Add data recovery status banner and reload functionality to AdminPanel to help users recover member data after deployment issues",
       "acceptanceCriteria": [
-        "An authenticated user with admin role can navigate to the admin panel without seeing any 'access denied' message.",
-        "The admin panel does not flash or render an 'access denied' state while authentication or role resolution is still loading.",
-        "The admin role query uses the authenticated actor, not the anonymous actor.",
-        "Non-admin authenticated users still see an appropriate denied/unauthorized message.",
-        "Unauthenticated users are prompted to log in rather than shown a permanent access denied error."
+        "When members are present, the banner shows the correct member count.",
+        "When the members list is empty, a warning message is displayed with a Reload button.",
+        "Clicking the Reload button triggers a fresh fetch of members from the backend.",
+        "The UI reflects the updated member list after reloading."
       ],
       "file_operations": [
         {
           "path": "frontend/src/pages/AdminPanel.tsx",
           "operation": "modify",
-          "description": "Modify the AdminPanel component to properly sequence authentication and authorization checks. Add explicit loading states that wait for both identity initialization and actor readiness before querying admin role. Replace premature access-denied rendering with a loading state while authentication is in progress. Ensure the isAdmin query is only enabled after the actor is available and not fetching. Show 'access denied' only after authentication is confirmed complete and the user is determined to be non-admin. For unauthenticated users, show a login prompt instead of access denied."
+          "description": "Add a data recovery status banner at the top of the members section that displays the count of loaded members when present. When the members list is empty, show a prominent warning message ('No members found — data may not have loaded. Please use the Reload button or contact support.') with a clearly labeled 'Reload Members' button. Wire the button to trigger queryClient.invalidateQueries for the listMembersByName query key to force a fresh fetch from the backend. Ensure the banner is visible and positioned above the existing members list/table section. Use the authorization component's authentication state to ensure users are logged in before displaying member data."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Review the useListMembersByName query hook to ensure it properly exposes loading, error, and data states that AdminPanel.tsx can consume for the recovery banner. Verify that the query key is correctly named so that invalidateQueries works as expected. No changes needed if the hook already returns standard React Query states (isLoading, isError, data, refetch)."
         }
       ]
     }

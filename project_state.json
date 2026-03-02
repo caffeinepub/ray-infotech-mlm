@@ -4,20 +4,29 @@
   "summary": "New project",
   "architectural_notes": [],
   "known_issues": [
-    "Admin panel page shows 'access denied' error that needs to be fixed"
+    "Members data appears missing/lost after deployment issues; user requesting data recovery"
   ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-fix-the-admin-panel-page-so-that-authenticated-admin-users-are-never-shown-an-access-denied-message-the-admin-role-check-must-use-the-authenticated-actor-not-an-anonymous-actor-and-must-wait-for-the-authenticated-identity-to-be-fully-initialized-before-evaluating-admin-privileges-remove-or-bypass-any-premature-access-denied-rendering-that-occurs-before-authentication-and-role-resolution-are-complete",
-      "title": "Fix the admin panel page so that authenticated admin users are never shown an 'access denied' message. The admin role check must use the authenticated actor (not an anonymous actor) and must wait for the authenticated identity to be fully initialized before evaluating admin privileges. Remove or bypass any premature access-denied rendering that occurs before authentication and role resolution are complete.",
+      "id": "feature-in-adminpanel-tsx-add-a-visible-data-recovery-status-banner-at-the-top-of-the-members-section-that-shows-the-count-of-members-loaded-from-the-backend-if-the-members-list-is-empty-display-a-prominent-warning-message-e-g-no-members-found-data-may-not-have-loaded-please-use-the-reload-button-or-contact-support-with-a-clearly-labeled-reload-members-button-that-re-fetches-the-members-list-from-the-backend",
+      "title": "In AdminPanel.tsx, add a visible data recovery status banner at the top of the members section that shows the count of members loaded from the backend. If the members list is empty, display a prominent warning message (e.g., 'No members found — data may not have loaded. Please use the Reload button or contact support.') with a clearly labeled 'Reload Members' button that re-fetches the members list from the backend.",
       "reqIds": [
-        "REQ-1"
+        "REQ-3"
       ],
       "version": 1
     }
   ],
-  "new_feature_requests": [],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "In the backend main actor, audit the getAllMembers (or equivalent member listing) function to ensure it correctly reads and returns all stored member records from stable storage. Verify that member data is not accidentally filtered, cleared, or shadowed by any initialization logic that might overwrite stable variables on upgrade. If any such logic exists, fix it so that stable member data is preserved across upgrades and deployments.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "status": "pending"
+    }
+  ],
   "projectName": "RAY INFOTECH MLM",
   "clarification_mode": "instant",
   "clarification_rounds": 0

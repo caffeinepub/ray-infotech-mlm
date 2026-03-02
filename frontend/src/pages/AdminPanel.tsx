@@ -1,39 +1,35 @@
 import React, { useState } from 'react';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { useActor } from '../hooks/useActor';
 import {
   useListMembers,
   useMarkJoiningFeePaid,
   useDeleteMember,
   useCheckMembershipStatuses,
 } from '../hooks/useQueries';
-import { ShieldAlert, Loader2, Users, CheckCircle, Trash2, RefreshCw, Plus, LogIn } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  ShieldAlert,
+  Loader2,
+  Users,
+  CheckCircle,
+  Trash2,
+  RefreshCw,
+  Plus,
+  LogIn,
+  AlertTriangle,
+  DatabaseBackup,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import PlatformStatistics from '../components/PlatformStatistics';
 import AddMemberForm from '../components/AddMemberForm';
 import type { MemberPublic } from '../backend';
 
 export default function AdminPanel() {
-  const { identity, isInitializing, login, loginStatus } = useInternetIdentity();
-  const { isFetching: actorFetching } = useActor();
-
+  const { identity, login, loginStatus } = useInternetIdentity();
   const [showAddMember, setShowAddMember] = useState(false);
-
-  // Show loading while identity is initializing or actor is fetching
-  const isStillLoading = isInitializing || actorFetching;
-
-  if (isStillLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="text-muted-foreground text-sm">Loading admin panel...</p>
-        </div>
-      </div>
-    );
-  }
 
   // If not authenticated at all, prompt login
   if (!identity) {
@@ -79,12 +75,27 @@ function AdminPanelContent({
   showAddMember: boolean;
   setShowAddMember: (v: boolean) => void;
 }) {
-  const { data: members = [], isLoading: membersLoading } = useListMembers();
+  const {
+    data: members = [],
+    isLoading: membersLoading,
+    isFetching: membersFetching,
+    isError: membersError,
+    error: membersErrorObj,
+    refetch: refetchMembers,
+  } = useListMembers();
   const markFeePaid = useMarkJoiningFeePaid();
   const deleteMember = useDeleteMember();
   const checkStatuses = useCheckMembershipStatuses();
+  const queryClient = useQueryClient();
 
   const allMembers = new Map<bigint, MemberPublic>(members.map((m) => [m.id, m]));
+
+  const handleReloadMembers = () => {
+    queryClient.invalidateQueries({ queryKey: ['members'] });
+    refetchMembers();
+  };
+
+  const showEmptyWarning = !membersLoading && !membersFetching && !membersError && members.length === 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -116,6 +127,68 @@ function AdminPanelContent({
           </div>
         </div>
 
+        {/* Data Recovery Banner — shown when members list is empty after loading */}
+        {showEmptyWarning && (
+          <Alert className="mb-6 border-amber-500/60 bg-amber-500/10">
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            <AlertTitle className="text-amber-500 font-semibold text-base">
+              No Members Found — Data May Not Have Loaded
+            </AlertTitle>
+            <AlertDescription className="mt-2 space-y-3">
+              <p className="text-foreground/80">
+                The members list appears empty. This may be a temporary loading issue after a recent
+                deployment. Your member data is stored securely on the Internet Computer and should
+                still be available.
+              </p>
+              <p className="text-foreground/70 text-sm">
+                Please click <strong>Reload Members</strong> below to force a fresh fetch from the
+                backend. If the problem persists, try logging out and back in.
+              </p>
+              <Button
+                onClick={handleReloadMembers}
+                disabled={membersFetching}
+                className="mt-1 bg-amber-500 hover:bg-amber-600 text-white border-0 flex items-center gap-2"
+              >
+                {membersFetching ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <DatabaseBackup className="h-4 w-4" />
+                )}
+                {membersFetching ? 'Reloading Members…' : 'Reload Members'}
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Error Banner */}
+        {membersError && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertTriangle className="h-5 w-5" />
+            <AlertTitle>Failed to Load Members</AlertTitle>
+            <AlertDescription className="mt-2 space-y-3">
+              <p>
+                {membersErrorObj instanceof Error
+                  ? membersErrorObj.message
+                  : 'An error occurred while fetching members.'}
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReloadMembers}
+                disabled={membersFetching}
+                className="flex items-center gap-2"
+              >
+                {membersFetching ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Platform Statistics — fetches its own data internally */}
         <div className="mb-8">
           <PlatformStatistics />
@@ -133,21 +206,39 @@ function AdminPanelContent({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5 text-primary" />
-              All Members
-              <Badge variant="secondary" className="ml-2">
-                {members.length}
-              </Badge>
+              Members Management
+              {members.length > 0 && (
+                <Badge variant="secondary" className="ml-2">
+                  {members.length} member{members.length !== 1 ? 's' : ''} loaded
+                </Badge>
+              )}
+              <div className="ml-auto">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleReloadMembers}
+                  disabled={membersFetching}
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className={`h-4 w-4 ${membersFetching ? 'animate-spin' : ''}`} />
+                  {membersFetching ? 'Reloading…' : 'Reload'}
+                </Button>
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {membersLoading ? (
-              <div className="flex items-center justify-center py-12">
+            {membersLoading || membersFetching ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-muted-foreground text-sm">Loading members from the blockchain…</p>
               </div>
             ) : members.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Users className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p>No members registered yet.</p>
+                <p className="font-medium">No members found.</p>
+                <p className="text-sm mt-1 opacity-70">
+                  Use the <strong>Reload Members</strong> button above to try fetching data again.
+                </p>
               </div>
             ) : (
               <div className="overflow-x-auto">
