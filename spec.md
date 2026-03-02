@@ -1,12 +1,14 @@
 # Specification
 
 ## Summary
-**Goal:** Fix authentication session persistence in the RAY INFOTECH MLM app so that already-authenticated users are not repeatedly prompted to log in and do not receive access denied errors.
+**Goal:** Fix the admin panel page so that authenticated admin users never see an "access denied" message due to premature or incorrect role evaluation.
 
 **Planned changes:**
-- Restore the Internet Identity delegation chain from persistent storage on app startup so authenticated users are not forced to log in again on page load or refresh.
-- Ensure the backend actor is initialized with the restored identity principal so canister calls carry the correct principal and role-based access checks pass for both admin and regular users.
-- Fix the LoginPage redirect logic so that navigating to `/login` while already authenticated immediately redirects the user to the appropriate page (admin panel or dashboard) without triggering the Internet Identity popup.
-- Ensure route guards and `AppLayout` consistently read authentication state from a single source of truth.
+- Ensure the admin panel waits for authentication and identity initialization to complete before evaluating admin role/privileges.
+- Update the admin role check to use the authenticated actor instead of the anonymous actor.
+- Remove or suppress any premature "access denied" rendering that occurs while authentication or role resolution is still loading.
+- Show a loading state while authentication/role resolution is in progress.
+- Unauthenticated users are redirected to login instead of shown a permanent access denied error.
+- Non-admin authenticated users still see an appropriate unauthorized message.
 
-**User-visible outcome:** A previously authenticated user can reload the app or navigate to any page without being shown the login prompt or receiving access denied errors; their session and role-based access are correctly restored automatically.
+**User-visible outcome:** Authenticated admin users can navigate to the admin panel without seeing any "access denied" message or flash, while non-admins and unauthenticated users are handled appropriately.

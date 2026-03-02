@@ -1,14 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
 import { useInternetIdentity } from './useInternetIdentity';
-import type { MemberPublic, UserProfile, LevelCommission } from '../backend';
+import type { MemberPublic, MemberRegistration, UserProfile } from '../backend';
+
+// ─── User Profile ────────────────────────────────────────────────────────────
 
 export function useGetCallerUserProfile() {
   const { actor, isFetching: actorFetching } = useActor();
-  const { isInitializing } = useInternetIdentity();
+  const { isInitializing, identity } = useInternetIdentity();
 
   const query = useQuery<UserProfile | null>({
-    queryKey: ['currentUserProfile'],
+    queryKey: ['currentUserProfile', identity?.getPrincipal().toString() ?? 'anonymous'],
     queryFn: async () => {
       if (!actor) throw new Error('Actor not available');
       return actor.getCallerUserProfile();
@@ -20,13 +22,14 @@ export function useGetCallerUserProfile() {
   return {
     ...query,
     isLoading: isInitializing || actorFetching || query.isLoading,
-    isFetched: !isInitializing && !!actor && query.isFetched,
+    isFetched: !isInitializing && !actorFetching && !!actor && query.isFetched,
   };
 }
 
 export function useSaveCallerUserProfile() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
+  const { identity } = useInternetIdentity();
 
   return useMutation({
     mutationFn: async (profile: UserProfile) => {
@@ -34,49 +37,72 @@ export function useSaveCallerUserProfile() {
       return actor.saveCallerUserProfile(profile);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
+      queryClient.invalidateQueries({
+        queryKey: ['currentUserProfile', identity?.getPrincipal().toString() ?? 'anonymous'],
+      });
     },
   });
 }
 
+// ─── Admin / Role ─────────────────────────────────────────────────────────────
+
 export function useIsCallerAdmin() {
   const { actor, isFetching: actorFetching } = useActor();
-  const { isInitializing } = useInternetIdentity();
+  const { isInitializing, identity } = useInternetIdentity();
 
-  return useQuery<boolean>({
-    queryKey: ['isCallerAdmin'],
+  const principal = identity?.getPrincipal().toString();
+  const isAuthenticated = !!identity && !!principal && principal !== 'anonymous';
+
+  const query = useQuery<boolean>({
+    // Include principal in key so the query resets when identity changes
+    queryKey: ['isCallerAdmin', principal ?? 'anonymous'],
     queryFn: async () => {
-      if (!actor) return false;
-      try {
-        const result = await actor.isCallerAdmin();
-        return result;
-      } catch {
-        return false;
-      }
+      if (!actor) throw new Error('Actor not available');
+      return actor.isCallerAdmin();
     },
-    // Do NOT run until identity initialization is complete — prevents anonymous actor from caching false
-    enabled: !!actor && !actorFetching && !isInitializing,
-    staleTime: 30_000,
-    retry: 2,
+    // Only run after:
+    // 1. Identity is fully restored (not initializing)
+    // 2. We have a real authenticated identity (not anonymous)
+    // 3. The actor is ready and not currently fetching
+    enabled: !!actor && !actorFetching && !isInitializing && isAuthenticated,
+    retry: false,
+    staleTime: 0, // Always refetch when key changes
   });
+
+  return {
+    ...query,
+    isLoading: isInitializing || actorFetching || (isAuthenticated && query.isLoading),
+    isFetched: !isInitializing && !actorFetching && (isAuthenticated ? query.isFetched : true),
+    // Expose whether we have a real authenticated identity
+    isAuthenticated,
+  };
 }
 
 export function useGetCallerUserRole() {
   const { actor, isFetching: actorFetching } = useActor();
-  const { isInitializing } = useInternetIdentity();
+  const { isInitializing, identity } = useInternetIdentity();
 
-  return useQuery({
-    queryKey: ['callerUserRole'],
+  const principal = identity?.getPrincipal().toString();
+
+  const query = useQuery({
+    queryKey: ['callerUserRole', principal ?? 'anonymous'],
     queryFn: async () => {
       if (!actor) throw new Error('Actor not available');
       return actor.getCallerUserRole();
     },
-    // Do NOT run until identity initialization is complete — prevents anonymous actor from caching guest
     enabled: !!actor && !actorFetching && !isInitializing,
-    staleTime: 30_000,
-    retry: 2,
+    retry: false,
+    staleTime: 0,
   });
+
+  return {
+    ...query,
+    isLoading: isInitializing || actorFetching || query.isLoading,
+    isFetched: !isInitializing && !actorFetching && !!actor && query.isFetched,
+  };
 }
+
+// ─── Members ──────────────────────────────────────────────────────────────────
 
 export function useListMembers() {
   const { actor, isFetching: actorFetching } = useActor();
@@ -106,31 +132,12 @@ export function useGetMember(id: bigint | null) {
   });
 }
 
-export function useGetSenderDownlines(senderId: bigint | null) {
-  const { actor, isFetching: actorFetching } = useActor();
-  const { isInitializing } = useInternetIdentity();
-
-  return useQuery<bigint[]>({
-    queryKey: ['downlines', senderId?.toString()],
-    queryFn: async () => {
-      if (!actor || senderId === null) return [];
-      return actor.getSenderDownlines(senderId);
-    },
-    enabled: !!actor && !actorFetching && !isInitializing && senderId !== null,
-  });
-}
-
 export function useRegisterMember() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (registration: {
-      name: string;
-      contactInfo: string;
-      sponsorId?: bigint;
-      uplineId?: bigint;
-    }) => {
+    mutationFn: async (registration: MemberRegistration) => {
       if (!actor) throw new Error('Actor not available');
       return actor.registerMember(registration);
     },
@@ -155,6 +162,27 @@ export function useMarkJoiningFeePaid() {
   });
 }
 
+export function useDeleteMember() {
+  const queryClient = useQueryClient();
+  const { identity } = useInternetIdentity();
+
+  return useMutation({
+    mutationFn: async (memberId: bigint) => {
+      // Always read the freshest actor from the query cache at mutation time
+      // so we use the authenticated actor, not a stale anonymous one
+      const principal = identity?.getPrincipal().toString();
+      const actorQueryKey = ['actor', principal];
+      const actor = queryClient.getQueryData<import('../backend').backendInterface>(actorQueryKey);
+
+      if (!actor) throw new Error('Actor not available — please ensure you are logged in');
+      return actor.deleteMember(memberId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['members'] });
+    },
+  });
+}
+
 export function useCheckMembershipStatuses() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
@@ -170,18 +198,17 @@ export function useCheckMembershipStatuses() {
   });
 }
 
-export function useDeleteMember() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
+export function useGetSenderDownlines(senderId: bigint | null) {
+  const { actor, isFetching: actorFetching } = useActor();
+  const { isInitializing } = useInternetIdentity();
 
-  return useMutation({
-    mutationFn: async (memberId: bigint) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.deleteMember(memberId);
+  return useQuery<bigint[]>({
+    queryKey: ['downlines', senderId?.toString()],
+    queryFn: async () => {
+      if (!actor || senderId === null) return [];
+      return actor.getSenderDownlines(senderId);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['members'] });
-    },
+    enabled: !!actor && !actorFetching && !isInitializing && senderId !== null,
   });
 }
 
@@ -189,7 +216,7 @@ export function useCalculateCommissions() {
   const { actor, isFetching: actorFetching } = useActor();
   const { isInitializing } = useInternetIdentity();
 
-  return useQuery<LevelCommission[]>({
+  return useQuery({
     queryKey: ['commissions'],
     queryFn: async () => {
       if (!actor) return [];

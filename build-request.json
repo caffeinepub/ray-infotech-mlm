@@ -1,73 +1,38 @@
 {
   "kind": "build_request",
-  "title": "Fix authentication session persistence causing login prompts and access denied errors",
+  "title": "Remove access denied from admin panel page",
   "projectName": "RAY INFOTECH MLM",
   "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Fix the Internet Identity session persistence so that already-authenticated users are not prompted to log in again on page load or navigation. The identity must be restored from the persisted delegation chain without requiring a new login flow.",
+      "text": "Fix the admin panel page so that authenticated admin users are never shown an 'access denied' message. The admin role check must use the authenticated actor (not an anonymous actor) and must wait for the authenticated identity to be fully initialized before evaluating admin privileges. Remove or bypass any premature access-denied rendering that occurs before authentication and role resolution are complete.",
       "target": "frontend",
       "source": {
         "messageIds": [
           "msg-1"
         ],
         "quotes": [
-          "I'd already logged in still it's prompting to login and access denied"
+          "Remove access denied from admin panel page"
         ]
       },
       "acceptanceCriteria": [
-        "A user who has previously authenticated via Internet Identity is not redirected to the login page on subsequent visits or page refreshes.",
-        "The persisted identity is rehydrated correctly from storage on app startup.",
-        "No 'access denied' error is shown to a user whose session is still valid."
-      ]
-    },
-    {
-      "id": "REQ-2",
-      "text": "Fix access denied errors for authenticated users: after session is successfully restored, role-based access checks (admin and regular user) must correctly recognize the restored identity principal and grant appropriate permissions without requiring a fresh login.",
-      "target": "both",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "still it's prompting to login and access denied"
-        ]
-      },
-      "acceptanceCriteria": [
-        "An admin user whose session is restored from persistence can access the Admin Panel without receiving an access denied error.",
-        "A regular authenticated user can access the Dashboard without being blocked.",
-        "The backend actor is initialized with the restored authenticated identity so that canister calls carry the correct principal.",
-        "The useActor hook correctly picks up the persisted identity on mount and does not fall back to anonymous principal for authenticated sessions."
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "text": "Ensure the LoginPage redirect logic does not re-trigger for users who are already authenticated: if a user navigates to /login while already logged in, they should be immediately redirected to the appropriate page (admin panel or dashboard) without showing the login prompt.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "I'd already logged in still it's prompting to login"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Navigating to /login while authenticated redirects the user away from the login page immediately.",
-        "The login button/Internet Identity popup is not triggered for already-authenticated sessions.",
-        "The AppLayout and route guards consistently read authentication state from the same source of truth."
+        "An authenticated user with admin role can navigate to the admin panel without seeing any 'access denied' message.",
+        "The admin panel does not flash or render an 'access denied' state while authentication or role resolution is still loading.",
+        "The admin role query uses the authenticated actor, not the anonymous actor.",
+        "Non-admin authenticated users still see an appropriate denied/unauthorized message.",
+        "Unauthenticated users are prompted to log in rather than shown a permanent access denied error."
       ]
     }
   ],
   "constraints": [
-    "Do not modify files under frontend/src/hooks/useInternetIdentity.ts or frontend/src/hooks/useActor.ts directly — propose safe alternatives or wrapper fixes in other files.",
-    "Do not change the backend authentication or principal logic beyond what is necessary to fix the access denied issue."
+    "Do not modify files listed in frontend.immutablePaths (useInternetIdentity.ts, useActor.ts, main.tsx, components/ui).",
+    "All Motoko backend logic must remain in the single main actor file."
   ],
   "nonGoals": [
-    "Adding new authentication providers or replacing Internet Identity.",
-    "Changing the visual design or layout of any page.",
-    "Adding new MLM features or modifying commission logic."
+    "Changing backend authorization logic or role definitions.",
+    "Redesigning the admin panel UI beyond fixing the access denied issue.",
+    "Modifying the registration or dashboard pages."
   ],
   "imageRequirements": {
     "required": [],

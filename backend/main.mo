@@ -1,14 +1,13 @@
 import Map "mo:core/Map";
-import Text "mo:core/Text";
-import Principal "mo:core/Principal";
-import Runtime "mo:core/Runtime";
 import List "mo:core/List";
 import Nat "mo:core/Nat";
+import Principal "mo:core/Principal";
+import Runtime "mo:core/Runtime";
+import Time "mo:core/Time";
+import Text "mo:core/Text";
 import Array "mo:core/Array";
 import Iter "mo:core/Iter";
-import Time "mo:core/Time";
 import VarArray "mo:core/VarArray";
-
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 

@@ -11,11 +11,11 @@ export default function LoginPage() {
   const isAuthenticated = !!identity;
   const isLoggingIn = loginStatus === 'logging-in';
 
-  const { data: userRole, isLoading: roleLoading } = useGetCallerUserRole();
+  const { data: userRole, isLoading: roleLoading, isFetched: roleFetched } = useGetCallerUserRole();
 
-  // Redirect after login based on role — only once identity is fully initialized
+  // Redirect after login based on role — only once identity is fully initialized and role is fetched
   useEffect(() => {
-    if (isInitializing || !isAuthenticated || roleLoading) return;
+    if (isInitializing || !isAuthenticated || roleLoading || !roleFetched) return;
 
     if (userRole === 'admin') {
       navigate({ to: '/admin' });
@@ -23,7 +23,7 @@ export default function LoginPage() {
       navigate({ to: '/dashboard' });
     }
     // guest role stays on login page (will be prompted to register)
-  }, [isAuthenticated, userRole, roleLoading, isInitializing, navigate]);
+  }, [isAuthenticated, userRole, roleLoading, roleFetched, isInitializing, navigate]);
 
   const handleLogin = async () => {
     try {
@@ -52,7 +52,7 @@ export default function LoginPage() {
   }
 
   // If already authenticated and role is loading, show a loading state
-  if (isAuthenticated && roleLoading) {
+  if (isAuthenticated && (roleLoading || !roleFetched)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">

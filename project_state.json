@@ -4,31 +4,15 @@
   "summary": "New project",
   "architectural_notes": [],
   "known_issues": [
-    "Users are being prompted to login again despite already being logged in, resulting in 'access denied' errors — authentication/session persistence issue in production."
+    "Admin panel page shows 'access denied' error that needs to be fixed"
   ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-fix-the-internet-identity-session-persistence-so-that-already-authenticated-users-are-not-prompted-to-log-in-again-on-page-load-or-navigation-the-identity-must-be-restored-from-the-persisted-delegation-chain-without-requiring-a-new-login-flow",
-      "title": "Fix the Internet Identity session persistence so that already-authenticated users are not prompted to log in again on page load or navigation. The identity must be restored from the persisted delegation chain without requiring a new login flow.",
+      "id": "feature-fix-the-admin-panel-page-so-that-authenticated-admin-users-are-never-shown-an-access-denied-message-the-admin-role-check-must-use-the-authenticated-actor-not-an-anonymous-actor-and-must-wait-for-the-authenticated-identity-to-be-fully-initialized-before-evaluating-admin-privileges-remove-or-bypass-any-premature-access-denied-rendering-that-occurs-before-authentication-and-role-resolution-are-complete",
+      "title": "Fix the admin panel page so that authenticated admin users are never shown an 'access denied' message. The admin role check must use the authenticated actor (not an anonymous actor) and must wait for the authenticated identity to be fully initialized before evaluating admin privileges. Remove or bypass any premature access-denied rendering that occurs before authentication and role resolution are complete.",
       "reqIds": [
         "REQ-1"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-fix-access-denied-errors-for-authenticated-users-after-session-is-successfully-restored-role-based-access-checks-admin-and-regular-user-must-correctly-recognize-the-restored-identity-principal-and-grant-appropriate-permissions-without-requiring-a-fresh-login",
-      "title": "Fix access denied errors for authenticated users: after session is successfully restored, role-based access checks (admin and regular user) must correctly recognize the restored identity principal and grant appropriate permissions without requiring a fresh login.",
-      "reqIds": [
-        "REQ-2"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-ensure-the-loginpage-redirect-logic-does-not-re-trigger-for-users-who-are-already-authenticated-if-a-user-navigates-to-login-while-already-logged-in-they-should-be-immediately-redirected-to-the-appropriate-page-admin-panel-or-dashboard-without-showing-the-login-prompt",
-      "title": "Ensure the LoginPage redirect logic does not re-trigger for users who are already authenticated: if a user navigates to /login while already logged in, they should be immediately redirected to the appropriate page (admin panel or dashboard) without showing the login prompt.",
-      "reqIds": [
-        "REQ-3"
       ],
       "version": 1
     }
