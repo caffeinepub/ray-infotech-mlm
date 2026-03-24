@@ -71,6 +71,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
                 required
+                data-ocid="login.input"
               />
             </div>
             <div>
@@ -82,12 +83,14 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
                 required
+                data-ocid="login.input"
               />
             </div>
             <Button
               type="submit"
               disabled={loading}
               className="w-full bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold"
+              data-ocid="login.submit_button"
             >
               <LogIn size={16} className="mr-2" /> Sign In
             </Button>
@@ -102,7 +105,10 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-4">
-          Admin: admin@rayinfotech.com / admin123
+          Admin?{" "}
+          <a href="/admin" className="text-gold-400 hover:text-gold-300">
+            Go to Admin Panel →
+          </a>
         </p>
       </div>
     </div>

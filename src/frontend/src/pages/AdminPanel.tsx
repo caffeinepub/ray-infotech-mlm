@@ -1,29 +1,152 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useNavigate } from "@tanstack/react-router";
-import { CheckCircle, Users, XCircle } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import {
+  BarChart2,
+  CheckCircle,
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  Shield,
+  Users,
+  XCircle,
+} from "lucide-react";
+import type React from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "../hooks/useAuth";
 import { getTrades, getUsers, updateUser } from "../lib/store";
 import type { User } from "../lib/store";
 
-export default function AdminPanel() {
-  const navigate = useNavigate();
-  const { isAdmin } = useAuth();
-  const [users, setUsers] = useState<User[]>([]);
+function AdminLoginForm() {
+  const { login } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (!isAdmin) {
-      navigate({ to: "/login" });
-      return;
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const ok = login(email.trim(), password);
+    setLoading(false);
+    if (!ok) {
+      toast.error("Invalid admin credentials");
     }
-    setUsers(getUsers());
-  }, [isAdmin, navigate]);
+  };
 
-  if (!isAdmin) return null;
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4 bg-background">
+      <div className="w-full max-w-sm">
+        {/* Branding */}
+        <div className="flex items-center justify-center gap-3 mb-8">
+          <div className="w-12 h-12 bg-gold-500/20 border border-gold-500/40 rounded-xl flex items-center justify-center">
+            <BarChart2 size={22} className="text-gold-400" />
+          </div>
+          <div>
+            <div className="text-xl font-bold text-gold-400 tracking-wider">
+              RAY INFOTECH
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Demo Trading Platform
+            </div>
+          </div>
+        </div>
+
+        {/* Card */}
+        <div className="bg-card border rounded-2xl p-6 shadow-lg">
+          <div className="flex items-center gap-2 mb-1">
+            <Shield size={18} className="text-gold-400" />
+            <h2 className="text-xl font-bold">Admin Login</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-6">
+            Access the admin control panel
+          </p>
+
+          {/* Credentials hint box */}
+          <div className="bg-muted/50 border border-border rounded-xl p-3 mb-5">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              Admin Credentials
+            </p>
+            <div className="flex items-center gap-2 text-sm">
+              <Mail size={13} className="text-gold-400 shrink-0" />
+              <span className="font-mono text-foreground">
+                admin@rayinfotech.com
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-sm mt-1">
+              <Lock size={13} className="text-gold-400 shrink-0" />
+              <span className="font-mono text-foreground">admin123</span>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="admin-email">Email</Label>
+              <Input
+                id="admin-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="admin@rayinfotech.com"
+                required
+                data-ocid="admin.input"
+              />
+            </div>
+            <div>
+              <Label htmlFor="admin-password">Password</Label>
+              <div className="relative">
+                <Input
+                  id="admin-password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  required
+                  className="pr-10"
+                  data-ocid="admin.input"
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowPassword((v) => !v)}
+                >
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold"
+              data-ocid="admin.submit_button"
+            >
+              <Shield size={15} className="mr-2" />
+              {loading ? "Signing in..." : "Sign In as Admin"}
+            </Button>
+          </form>
+        </div>
+
+        <p className="text-center text-xs text-muted-foreground mt-5">
+          Not an admin?{" "}
+          <a href="/login" className="text-gold-400 hover:text-gold-300">
+            Member login →
+          </a>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export default function AdminPanel() {
+  const { isAdmin } = useAuth();
+  const [users, setUsers] = useState<User[]>(() => getUsers());
+
+  if (!isAdmin) return <AdminLoginForm />;
 
   const reload = () => setUsers(getUsers());
 
@@ -346,7 +469,7 @@ export default function AdminPanel() {
                           </span>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          Amount: \u20b91 | UPI
+                          Amount: ₹1 | UPI
                         </div>
                         <div className="text-xs text-muted-foreground">
                           Joined: {fmtDate(u.createdAt)}
