@@ -28,6 +28,8 @@ export interface Trade {
   quantity: number;
   price: number;
   timestamp: number;
+  charges?: number;
+  netAmount?: number;
 }
 
 export interface Holding {

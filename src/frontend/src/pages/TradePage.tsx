@@ -3,15 +3,156 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "@tanstack/react-router";
-import { Search, Star, StarOff, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Search, Star, StarOff, X } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "../hooks/useAuth";
 import { ASSETS, getSimulatedPrices, isMarketOpen } from "../lib/assets";
 import type { Asset } from "../lib/assets";
 import { addTrade, getHoldingQty, getUserById, updateUser } from "../lib/store";
+
+// ─── Charges Calculator ───────────────────────────────────────────────────────
+
+interface Charges {
+  tradeValue: number;
+  brokerage: number;
+  stt: number;
+  exchangeCharges: number;
+  gst: number;
+  sebiCharges: number;
+  stampDuty: number;
+  totalCharges: number;
+  netAmount: number; // BUY: tradeValue + totalCharges | SELL: tradeValue - totalCharges
+}
+
+function calculateCharges(tradeValue: number, type: "BUY" | "SELL"): Charges {
+  const brokerage = 0.5;
+  const stt = tradeValue * 0.001; // 0.1%
+  const exchangeCharges = tradeValue * 0.0000345; // 0.00345%
+  const gst = (brokerage + exchangeCharges) * 0.18; // 18% on brokerage + exchange
+  const sebiCharges = tradeValue * 0.000001; // 0.0001%
+  const stampDuty = type === "BUY" ? tradeValue * 0.00015 : 0; // 0.015% only on BUY
+
+  const totalCharges =
+    brokerage + stt + exchangeCharges + gst + sebiCharges + stampDuty;
+  const netAmount =
+    type === "BUY" ? tradeValue + totalCharges : tradeValue - totalCharges;
+
+  return {
+    tradeValue,
+    brokerage,
+    stt,
+    exchangeCharges,
+    gst,
+    sebiCharges,
+    stampDuty,
+    totalCharges,
+    netAmount,
+  };
+}
+
+// ─── Charges Breakdown UI ─────────────────────────────────────────────────────
+
+function ChargesBreakdown({
+  charges,
+  type,
+}: { charges: Charges; type: "BUY" | "SELL" }) {
+  const [open, setOpen] = useState(false);
+  const fmt2 = (n: number) =>
+    `\u20b9${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+
+  return (
+    <div
+      className="rounded-lg border border-border bg-muted/30 text-xs"
+      data-ocid="trade.charges.panel"
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-3 py-2 font-medium text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <span>Charges &amp; Taxes</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-foreground font-semibold">
+            {fmt2(charges.totalCharges)}
+          </span>
+          {open ? (
+            <ChevronUp className="w-3 h-3" />
+          ) : (
+            <ChevronDown className="w-3 h-3" />
+          )}
+        </div>
+      </button>
+
+      {open && (
+        <div className="px-3 pb-3 space-y-1.5 border-t border-border pt-2">
+          <div className="flex justify-between text-muted-foreground">
+            <span>Trade Value</span>
+            <span>{fmt2(charges.tradeValue)}</span>
+          </div>
+          <div className="flex justify-between text-muted-foreground">
+            <span>Brokerage</span>
+            <span>{fmt2(charges.brokerage)}</span>
+          </div>
+          <div className="flex justify-between text-muted-foreground">
+            <span>STT (0.1%)</span>
+            <span>{fmt2(charges.stt)}</span>
+          </div>
+          <div className="flex justify-between text-muted-foreground">
+            <span>Exchange Charges</span>
+            <span>{fmt2(charges.exchangeCharges)}</span>
+          </div>
+          <div className="flex justify-between text-muted-foreground">
+            <span>GST (18%)</span>
+            <span>{fmt2(charges.gst)}</span>
+          </div>
+          <div className="flex justify-between text-muted-foreground">
+            <span>SEBI Charges</span>
+            <span>{fmt2(charges.sebiCharges)}</span>
+          </div>
+          {type === "BUY" && (
+            <div className="flex justify-between text-muted-foreground">
+              <span>Stamp Duty (0.015%)</span>
+              <span>{fmt2(charges.stampDuty)}</span>
+            </div>
+          )}
+          <Separator className="my-1" />
+          <div className="flex justify-between font-semibold text-foreground">
+            <span>Total Charges</span>
+            <span className="text-orange-400">
+              {fmt2(charges.totalCharges)}
+            </span>
+          </div>
+          <div className="flex justify-between font-bold text-foreground">
+            <span>{type === "BUY" ? "You Pay" : "You Receive"}</span>
+            <span
+              className={type === "BUY" ? "text-red-400" : "text-green-400"}
+            >
+              {fmt2(charges.netAmount)}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Always-visible net amount summary when collapsed */}
+      {!open && (
+        <div className="px-3 pb-2 flex justify-between font-bold text-xs border-t border-border pt-2">
+          <span className="text-muted-foreground">
+            {type === "BUY" ? "You Pay" : "You Receive"}
+          </span>
+          <span className={type === "BUY" ? "text-red-400" : "text-green-400"}>
+            {fmt2(charges.netAmount)}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function TradePage() {
   const navigate = useNavigate();
@@ -66,7 +207,6 @@ export default function TradePage() {
     );
   };
 
-  // Global search across all asset types when query is present
   const globalSearchResults = q
     ? ASSETS.filter(
         (a) =>
@@ -101,26 +241,27 @@ export default function TradePage() {
       return;
     }
     const price = prices[selected.symbol] || selected.basePrice;
-    const total = price * quantity;
+    const tradeValue = price * quantity;
+    const charges = calculateCharges(tradeValue, orderType);
 
     const freshUser = getUserById(user.id);
     if (!freshUser) return;
 
     if (orderType === "BUY") {
-      if (freshUser.virtualBalance < total) {
+      if (freshUser.virtualBalance < charges.netAmount) {
         toast.error(
-          `Insufficient balance. Available: ${fmt(freshUser.virtualBalance)}`,
+          `Insufficient balance. Need ${fmt(charges.netAmount)} (incl. charges). Available: ${fmt(freshUser.virtualBalance)}`,
         );
         return;
       }
-      freshUser.virtualBalance -= total;
+      freshUser.virtualBalance -= charges.netAmount;
     } else {
       const holding = getHoldingQty(user.id, selected.symbol);
       if (holding < quantity) {
         toast.error(`Insufficient holdings. You have ${holding} shares`);
         return;
       }
-      freshUser.virtualBalance += total;
+      freshUser.virtualBalance += charges.netAmount;
     }
 
     addTrade({
@@ -133,15 +274,30 @@ export default function TradePage() {
       quantity,
       price,
       timestamp: Date.now(),
+      charges: charges.totalCharges,
+      netAmount: charges.netAmount,
     });
 
     updateUser(freshUser);
     refresh();
+
+    const fmtFull = (n: number) =>
+      `\u20b9${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
     toast.success(
-      `${orderType} order placed: ${quantity} x ${selected.symbol} @ ${fmt(price)}`,
+      `${orderType} order placed: ${quantity} × ${selected.symbol} @ ${fmt(price)} | Net ${orderType === "BUY" ? "paid" : "received"}: ${fmtFull(charges.netAmount)} (charges: ${fmtFull(charges.totalCharges)})`,
     );
     setQty("1");
   };
+
+  // Compute live charges for the current selection
+  const liveCharges: Charges | null = (() => {
+    if (!selected || !qty) return null;
+    const quantity = Number.parseInt(qty) || 0;
+    if (quantity < 1) return null;
+    const price = prices[selected.symbol] || selected.basePrice;
+    return calculateCharges(price * quantity, orderType);
+  })();
 
   const AssetRow = ({ a, idx }: { a: Asset; idx: number }) => {
     const cur = prices[a.symbol] || a.basePrice;
@@ -298,7 +454,6 @@ export default function TradePage() {
       <div className="grid lg:grid-cols-5 gap-4">
         {/* Asset List */}
         <div className="lg:col-span-3">
-          {/* Global search results across all types */}
           {q ? (
             <Card>
               <CardContent className="p-3">
@@ -470,16 +625,8 @@ export default function TradePage() {
                 />
               </div>
 
-              {selected && qty && (
-                <div className="text-sm text-muted-foreground">
-                  Total:{" "}
-                  <span className="font-bold text-foreground">
-                    {fmt(
-                      (prices[selected.symbol] || selected.basePrice) *
-                        (Number.parseInt(qty) || 0),
-                    )}
-                  </span>
-                </div>
+              {selected && qty && liveCharges && (
+                <ChargesBreakdown charges={liveCharges} type={orderType} />
               )}
 
               <Button
@@ -576,7 +723,7 @@ export default function TradePage() {
             </button>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 mb-3">
             <Input
               data-ocid="trade.mobile.qty.input"
               type="number"
@@ -586,17 +733,6 @@ export default function TradePage() {
               placeholder="Qty"
               className="w-24"
             />
-            {qty && (
-              <div className="flex items-center text-xs text-muted-foreground flex-1">
-                Total:{" "}
-                <span className="font-bold text-foreground ml-1">
-                  {fmt(
-                    (prices[selected.symbol] || selected.basePrice) *
-                      (Number.parseInt(qty) || 0),
-                  )}
-                </span>
-              </div>
-            )}
             <Button
               data-ocid="trade.mobile.order.submit_button"
               onClick={handleTrade}
@@ -610,6 +746,11 @@ export default function TradePage() {
               Place {orderType}
             </Button>
           </div>
+
+          {/* Mobile charges breakdown */}
+          {liveCharges && (
+            <ChargesBreakdown charges={liveCharges} type={orderType} />
+          )}
 
           {!isApproved && (
             <p className="text-xs text-yellow-400 mt-2">
