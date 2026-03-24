@@ -1,0 +1,12 @@
+{
+  "name": "RAY INFOTECH Demo Trading",
+  "short_name": "RI Trading",
+  "description": "Indian Stock Market Demo Trading Platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1a3a",
+  "theme_color": "#0f1a3a",
+  "icons": [
+    { "src": "/favicon.ico", "sizes": "64x64", "type": "image/x-icon" }
+  ]
+}

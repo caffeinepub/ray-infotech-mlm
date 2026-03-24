@@ -1,168 +1,90 @@
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useNavigate } from "@tanstack/react-router";
-import {
-  AlertCircle,
-  Check,
-  CheckCircle,
-  Copy,
-  IndianRupee,
-  Zap,
-} from "lucide-react";
+import { CheckCircle, Upload } from "lucide-react";
 import type React from "react";
-import { useState } from "react";
-import { useGetMember, useRegisterMember } from "../hooks/useQueries";
+import { useRef, useState } from "react";
+import { toast } from "sonner";
+import { getUsers, nextMemberId, saveUsers } from "../lib/store";
+import type { User } from "../lib/store";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-
+  const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     name: "",
-    mobile: "",
     email: "",
-    sponsorId: "",
+    phone: "",
+    password: "",
+    aadhaar: "",
+    pan: "",
+    digilockerRef: "",
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [sponsorIdNum, setSponsorIdNum] = useState<bigint | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [registrationResult, setRegistrationResult] = useState<{
-    id: bigint;
-    memberId: string;
-  } | null>(null);
+  const [proof, setProof] = useState<string>("");
+  const [proofName, setProofName] = useState("");
+  const [done, setDone] = useState<User | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  const registerMutation = useRegisterMember();
-
-  // Validate sponsor ID by fetching the member
-  const { data: sponsorMember, isLoading: sponsorLoading } =
-    useGetMember(sponsorIdNum);
-
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (!form.name.trim()) newErrors.name = "Name is required";
-    if (!form.mobile.trim()) newErrors.mobile = "Mobile number is required";
-    else if (!/^\d{10}$/.test(form.mobile.replace(/\s/g, "")))
-      newErrors.mobile = "Enter a valid 10-digit mobile number";
-    if (!form.email.trim()) newErrors.email = "Email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-      newErrors.email = "Enter a valid email address";
-    if (!form.sponsorId.trim()) newErrors.sponsorId = "Sponsor ID is required";
-    else if (!/^\d+$/.test(form.sponsorId.trim()))
-      newErrors.sponsorId = "Sponsor ID must be a number";
-    return newErrors;
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
-
-    if (name === "sponsorId") {
-      const num = Number.parseInt(value, 10);
-      if (!Number.isNaN(num) && num > 0) {
-        setSponsorIdNum(BigInt(num));
-      } else {
-        setSponsorIdNum(null);
-      }
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const validationErrors = validate();
-
-    // Check sponsor exists
-    if (form.sponsorId && sponsorIdNum !== null && sponsorMember === null) {
-      validationErrors.sponsorId =
-        "Sponsor ID not found. Please enter a valid member ID.";
-    }
-
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("File too large (max 2MB)");
       return;
     }
+    setProofName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => setProof(reader.result as string);
+    reader.readAsDataURL(file);
+  };
 
-    try {
-      const result = await registerMutation.mutateAsync({
-        name: form.name.trim(),
-        contactInfo: `${form.mobile.trim()}|${form.email.trim()}`,
-        sponsorId: sponsorIdNum ?? undefined,
-        uplineId: undefined,
-      });
-      setRegistrationResult({ id: result.id, memberId: result.memberId });
-    } catch (err: unknown) {
-      const error = err as Error;
-      const msg = error?.message || "Registration failed. Please try again.";
-      if (
-        msg.includes("Sponsor") ||
-        msg.includes("upline") ||
-        msg.includes("sponsor")
-      ) {
-        setErrors({ sponsorId: msg });
-      } else {
-        setErrors({ submit: msg });
-      }
+  const handleRegister = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!proof) {
+      toast.error("Please upload payment proof");
+      return;
     }
+    const users = getUsers();
+    if (users.find((u) => u.email.toLowerCase() === form.email.toLowerCase())) {
+      toast.error("Email already registered");
+      return;
+    }
+    const newUser: User = {
+      id: nextMemberId(),
+      ...form,
+      paymentProof: proof,
+      kycStatus: "pending",
+      paymentStatus: "pending",
+      accountStatus: "active",
+      virtualBalance: 0,
+      watchlist: [],
+      createdAt: Date.now(),
+    };
+    users.push(newUser);
+    saveUsers(users);
+    setDone(newUser);
   };
 
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  if (registrationResult) {
+  if (done) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4 py-16">
-        <div className="w-full max-w-md bg-card border border-border rounded-2xl shadow-lg p-8 text-center">
-          <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-9 h-9 text-green-500" />
-          </div>
-          <h2 className="text-2xl font-bold text-foreground font-poppins mb-2">
-            Registration Successful!
-          </h2>
-          <p className="text-muted-foreground text-sm mb-6">
-            Welcome to RAY INFOTECH. Your account has been created.
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="bg-card border rounded-2xl p-8 max-w-sm w-full text-center">
+          <CheckCircle size={48} className="text-green-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold mb-2">Registration Submitted!</h2>
+          <p className="text-muted-foreground text-sm mb-4">
+            Your Member ID:{" "}
+            <span className="font-bold text-gold-400">{done.id}</span>
           </p>
-
-          <div className="bg-muted/50 rounded-xl p-4 mb-4">
-            <p className="text-xs text-muted-foreground mb-1">Your Member ID</p>
-            <div className="flex items-center justify-center gap-2">
-              <span className="text-2xl font-bold text-gold-400 font-poppins tracking-wider">
-                {registrationResult.memberId}
-              </span>
-              <button
-                type="button"
-                onClick={() => handleCopy(registrationResult.memberId)}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {copied ? (
-                  <Check className="w-4 h-4 text-green-500" />
-                ) : (
-                  <Copy className="w-4 h-4" />
-                )}
-              </button>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Numeric ID: {registrationResult.id.toString()}
-            </p>
-          </div>
-
-          <Alert className="mb-6 text-left border-gold-500/30 bg-gold-500/5">
-            <IndianRupee className="w-4 h-4 text-gold-400" />
-            <AlertDescription className="text-sm">
-              <strong className="text-gold-400">Payment Pending:</strong> Your
-              joining fee of ₹2,750 is pending. Please complete payment to
-              activate your account and start earning.
-            </AlertDescription>
-          </Alert>
-
+          <p className="text-sm text-muted-foreground mb-6">
+            Your registration is under review. Once admin approves your payment
+            and KYC, you will receive ₹1000000 virtual balance.
+          </p>
           <Button
-            onClick={() => navigate({ to: "/dashboard" })}
+            onClick={() => navigate({ to: "/login" })}
             className="w-full bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold"
           >
-            Go to Dashboard
+            Go to Login
           </Button>
         </div>
       </div>
@@ -170,149 +92,214 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-16">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="w-10 h-10 bg-gold-500 rounded-xl flex items-center justify-center">
-          <Zap className="w-6 h-6 text-navy-900" />
-        </div>
-        <h1 className="text-xl font-bold text-gold-400 tracking-widest uppercase font-poppins">
-          RAY INFOTECH
-        </h1>
-      </div>
+    <div className="min-h-screen flex items-center justify-center px-4 py-8">
+      <div className="w-full max-w-md bg-card border rounded-2xl p-6 shadow-lg">
+        <h2 className="text-xl font-bold mb-1">Create Account</h2>
+        <p className="text-sm text-muted-foreground mb-6">
+          Join RAY INFOTECH Demo Trading Platform
+        </p>
 
-      <div className="w-full max-w-md bg-card border border-border rounded-2xl shadow-lg p-8">
-        <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold text-foreground font-poppins mb-1">
-            Join Now
-          </h2>
-          <p className="text-muted-foreground text-sm">
-            Register as a member and start your journey
-          </p>
-        </div>
-
-        {/* Fee Banner */}
-        <div className="flex items-center gap-3 bg-gold-500/10 border border-gold-500/30 rounded-xl p-3 mb-6">
-          <IndianRupee className="w-5 h-5 text-gold-400 shrink-0" />
-          <div>
-            <p className="text-sm font-semibold text-gold-400">
-              Joining Fee: ₹2,750
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Refunded after recruiting 3 direct members
-            </p>
+        {step === 1 && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Full Name *</Label>
+                <Input
+                  value={form.name}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, name: e.target.value }))
+                  }
+                  placeholder="Full name"
+                  required
+                />
+              </div>
+              <div>
+                <Label>Phone *</Label>
+                <Input
+                  value={form.phone}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, phone: e.target.value }))
+                  }
+                  placeholder="10-digit"
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Email *</Label>
+              <Input
+                type="email"
+                value={form.email}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, email: e.target.value }))
+                }
+                placeholder="your@email.com"
+                required
+              />
+            </div>
+            <div>
+              <Label>Password *</Label>
+              <Input
+                type="password"
+                value={form.password}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, password: e.target.value }))
+                }
+                placeholder="Min 6 characters"
+                required
+              />
+            </div>
+            <Button
+              className="w-full bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold"
+              onClick={() => {
+                if (
+                  !form.name ||
+                  !form.email ||
+                  !form.phone ||
+                  !form.password
+                ) {
+                  toast.error("Fill all fields");
+                  return;
+                }
+                if (form.password.length < 6) {
+                  toast.error("Password min 6 chars");
+                  return;
+                }
+                setStep(2);
+              }}
+            >
+              Next: KYC Details
+            </Button>
           </div>
-        </div>
-
-        {errors.submit && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertCircle className="w-4 h-4" />
-            <AlertDescription>{errors.submit}</AlertDescription>
-          </Alert>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="name">Full Name *</Label>
-            <Input
-              id="name"
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              placeholder="Enter your full name"
-              className={errors.name ? "border-destructive" : ""}
-            />
-            {errors.name && (
-              <p className="text-xs text-destructive mt-1">{errors.name}</p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="mobile">Mobile Number *</Label>
-            <Input
-              id="mobile"
-              name="mobile"
-              value={form.mobile}
-              onChange={handleChange}
-              placeholder="10-digit mobile number"
-              className={errors.mobile ? "border-destructive" : ""}
-            />
-            {errors.mobile && (
-              <p className="text-xs text-destructive mt-1">{errors.mobile}</p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="email">Email Address *</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              value={form.email}
-              onChange={handleChange}
-              placeholder="your@email.com"
-              className={errors.email ? "border-destructive" : ""}
-            />
-            {errors.email && (
-              <p className="text-xs text-destructive mt-1">{errors.email}</p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="sponsorId">Sponsor ID *</Label>
-            <div className="relative">
+        {step === 2 && (
+          <div className="space-y-4">
+            <div>
+              <Label>Aadhaar Number *</Label>
               <Input
-                id="sponsorId"
-                name="sponsorId"
-                value={form.sponsorId}
-                onChange={handleChange}
-                placeholder="Enter sponsor's numeric ID"
-                className={errors.sponsorId ? "border-destructive" : ""}
+                value={form.aadhaar}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, aadhaar: e.target.value }))
+                }
+                placeholder="12-digit Aadhaar"
+                required
               />
-              {sponsorIdNum !== null && !sponsorLoading && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  {sponsorMember ? (
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                  ) : (
-                    <AlertCircle className="w-4 h-4 text-destructive" />
-                  )}
-                </div>
-              )}
             </div>
-            {sponsorIdNum !== null && !sponsorLoading && sponsorMember && (
-              <p className="text-xs text-green-500 mt-1">
-                Sponsor: {sponsorMember.name}
-              </p>
-            )}
-            {errors.sponsorId && (
-              <p className="text-xs text-destructive mt-1">
-                {errors.sponsorId}
-              </p>
-            )}
+            <div>
+              <Label>PAN Number *</Label>
+              <Input
+                value={form.pan}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, pan: e.target.value.toUpperCase() }))
+                }
+                placeholder="ABCDE1234F"
+                required
+              />
+            </div>
+            <div>
+              <Label>DigiLocker Reference (optional)</Label>
+              <Input
+                value={form.digilockerRef}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, digilockerRef: e.target.value }))
+                }
+                placeholder="DigiLocker document reference"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setStep(1)}
+              >
+                Back
+              </Button>
+              <Button
+                className="flex-1 bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold"
+                onClick={() => {
+                  if (!form.aadhaar || !form.pan) {
+                    toast.error("Fill Aadhaar and PAN");
+                    return;
+                  }
+                  setStep(3);
+                }}
+              >
+                Next: Payment
+              </Button>
+            </div>
           </div>
+        )}
 
-          <Button
-            type="submit"
-            disabled={registerMutation.isPending || sponsorLoading}
-            className="w-full bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold mt-2"
-            size="lg"
-          >
-            {registerMutation.isPending ? (
-              <span className="flex items-center gap-2">
-                <span className="w-4 h-4 border-2 border-navy-900/30 border-t-navy-900 rounded-full animate-spin" />
-                Registering...
-              </span>
-            ) : (
-              "Register Now"
-            )}
-          </Button>
-        </form>
+        {step === 3 && (
+          <form onSubmit={handleRegister} className="space-y-4">
+            <div className="text-center">
+              <p className="text-sm font-semibold mb-3">
+                Pay \u20b91 via UPI to complete registration
+              </p>
+              <div className="inline-block border-2 border-gold-500/40 rounded-xl p-2 bg-white">
+                <img
+                  src="/assets/uploads/c4e00e11-2c6c-4637-966f-6cd09caf74db_image-1.png"
+                  alt="UPI QR Code"
+                  className="w-48 h-48 object-contain"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                UPI ID: 6370815283@okbizaxis
+                <br />
+                RAY INFOTECH | Amount: \u20b91
+              </p>
+            </div>
+
+            <div>
+              <Label>Upload Payment Screenshot *</Label>
+              <button
+                type="button"
+                className="w-full border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-gold-500/50 transition-colors"
+                onClick={() => fileRef.current?.click()}
+              >
+                <Upload
+                  size={20}
+                  className="mx-auto text-muted-foreground mb-2"
+                />
+                <p className="text-sm text-muted-foreground">
+                  {proofName || "Click to upload screenshot"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Max 2MB (JPG/PNG)
+                </p>
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFile}
+                className="hidden"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setStep(2)}
+              >
+                Back
+              </Button>
+              <Button
+                type="submit"
+                className="flex-1 bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold"
+              >
+                Submit Registration
+              </Button>
+            </div>
+          </form>
+        )}
 
         <p className="text-center text-sm text-muted-foreground mt-4">
-          Already a member?{" "}
-          <a
-            href="/login"
-            className="text-gold-400 hover:text-gold-300 font-medium transition-colors"
-          >
+          Have an account?{" "}
+          <a href="/login" className="text-gold-400 hover:text-gold-300">
             Sign in
           </a>
         </p>

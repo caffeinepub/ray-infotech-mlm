@@ -1,175 +1,109 @@
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useNavigate } from "@tanstack/react-router";
-import { Loader2, LogIn, Shield, TrendingUp, Users, Zap } from "lucide-react";
-import React, { useEffect } from "react";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import { useGetCallerUserRole } from "../hooks/useQueries";
+import { BarChart2, LogIn } from "lucide-react";
+import type React from "react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { useAuth } from "../hooks/useAuth";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login, loginStatus, identity, isInitializing } =
-    useInternetIdentity();
-  const isAuthenticated = !!identity;
-  const isLoggingIn = loginStatus === "logging-in";
+  const { login, isAdmin, user } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const {
-    data: userRole,
-    isLoading: roleLoading,
-    isFetched: roleFetched,
-  } = useGetCallerUserRole();
+  if (user) {
+    navigate({ to: "/dashboard" });
+    return null;
+  }
+  if (isAdmin) {
+    navigate({ to: "/admin" });
+    return null;
+  }
 
-  // Redirect after login based on role — only once identity is fully initialized and role is fetched
-  useEffect(() => {
-    if (isInitializing || !isAuthenticated || roleLoading || !roleFetched)
-      return;
-
-    if (userRole === "admin") {
-      navigate({ to: "/admin" });
-    } else if (userRole === "user") {
-      navigate({ to: "/dashboard" });
-    }
-    // guest role stays on login page (will be prompted to register)
-  }, [
-    isAuthenticated,
-    userRole,
-    roleLoading,
-    roleFetched,
-    isInitializing,
-    navigate,
-  ]);
-
-  const handleLogin = async () => {
-    try {
-      await login();
-    } catch (error: unknown) {
-      const err = error as Error;
-      if (err?.message === "User is already authenticated") {
-        // already logged in, role redirect will handle it
-      } else {
-        console.error("Login error:", err);
-      }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const ok = login(email.trim(), password);
+    setLoading(false);
+    if (ok) {
+      const session = localStorage.getItem("ri_session");
+      if (session === "admin") navigate({ to: "/admin" });
+      else navigate({ to: "/dashboard" });
+    } else {
+      toast.error("Invalid email or password");
     }
   };
 
-  // While identity is being restored, show a loading state instead of the login form
-  // to prevent the login UI from flashing for already-authenticated users
-  if (isInitializing) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-10 w-10 animate-spin text-gold-400" />
-          <p className="text-muted-foreground text-sm">
-            Restoring your session…
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // If already authenticated and role is loading, show a loading state
-  if (isAuthenticated && (roleLoading || !roleFetched)) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-10 w-10 animate-spin text-gold-400" />
-          <p className="text-muted-foreground text-sm">Loading your account…</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Hero Section */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4 py-16">
-        {/* Logo */}
-        <div className="flex items-center gap-3 mb-8">
-          <div className="w-12 h-12 bg-gold-500 rounded-xl flex items-center justify-center shadow-gold">
-            <Zap className="w-7 h-7 text-navy-900" />
+    <div className="min-h-screen flex items-center justify-center px-4 bg-background">
+      <div className="w-full max-w-sm">
+        <div className="flex items-center justify-center gap-2 mb-8">
+          <div className="w-10 h-10 bg-gold-500/20 border border-gold-500/40 rounded-xl flex items-center justify-center">
+            <BarChart2 size={20} className="text-gold-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gold-400 tracking-widest uppercase font-poppins">
+            <div className="text-lg font-bold text-gold-400 tracking-wider">
               RAY INFOTECH
-            </h1>
-            <p className="text-xs text-muted-foreground tracking-wider uppercase">
-              Member Portal
-            </p>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Demo Trading Platform
+            </div>
           </div>
         </div>
 
-        {/* Main Card */}
-        <div className="w-full max-w-md bg-card border border-border rounded-2xl shadow-lg p-8">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-foreground font-poppins mb-2">
-              Welcome Back
-            </h2>
-            <p className="text-muted-foreground text-sm">
-              Sign in to access your member dashboard and track your earnings
-            </p>
-          </div>
+        <div className="bg-card border rounded-2xl p-6 shadow-lg">
+          <h2 className="text-xl font-bold mb-1">Sign In</h2>
+          <p className="text-sm text-muted-foreground mb-6">
+            Access your trading account
+          </p>
 
-          {/* Features */}
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            <div className="flex flex-col items-center gap-2 p-3 bg-muted/50 rounded-xl">
-              <TrendingUp className="w-5 h-5 text-gold-400" />
-              <span className="text-xs text-muted-foreground text-center">
-                Track Earnings
-              </span>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                required
+              />
             </div>
-            <div className="flex flex-col items-center gap-2 p-3 bg-muted/50 rounded-xl">
-              <Users className="w-5 h-5 text-gold-400" />
-              <span className="text-xs text-muted-foreground text-center">
-                View Downline
-              </span>
+            <div>
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                required
+              />
             </div>
-            <div className="flex flex-col items-center gap-2 p-3 bg-muted/50 rounded-xl">
-              <Shield className="w-5 h-5 text-gold-400" />
-              <span className="text-xs text-muted-foreground text-center">
-                Secure Login
-              </span>
-            </div>
-          </div>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold"
+            >
+              <LogIn size={16} className="mr-2" /> Sign In
+            </Button>
+          </form>
 
-          {/* Login Button */}
-          <Button
-            onClick={handleLogin}
-            disabled={isLoggingIn}
-            className="w-full bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold py-3 rounded-xl text-base"
-            size="lg"
-          >
-            {isLoggingIn ? (
-              <span className="flex items-center gap-2">
-                <span className="w-4 h-4 border-2 border-navy-900/30 border-t-navy-900 rounded-full animate-spin" />
-                Signing in...
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <LogIn className="w-5 h-5" />
-                Sign In
-              </span>
-            )}
-          </Button>
-
-          <div className="mt-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              Not a member yet?{" "}
-              <a
-                href="/register"
-                className="text-gold-400 hover:text-gold-300 font-medium transition-colors"
-              >
-                Register here
-              </a>
-            </p>
-          </div>
-        </div>
-
-        {/* Info */}
-        <div className="mt-8 max-w-md text-center">
-          <p className="text-xs text-muted-foreground">
-            RAY INFOTECH uses secure Internet Identity authentication. Your data
-            is protected and stored on the blockchain.
+          <p className="text-center text-sm text-muted-foreground mt-4">
+            No account?{" "}
+            <a href="/register" className="text-gold-400 hover:text-gold-300">
+              Register here
+            </a>
           </p>
         </div>
+
+        <p className="text-center text-xs text-muted-foreground mt-4">
+          Admin: admin@rayinfotech.com / admin123
+        </p>
       </div>
     </div>
   );
