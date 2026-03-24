@@ -19,6 +19,7 @@ export interface User {
   createdAt: number;
   referredBy?: string; // Member ID of referrer
   referralBonus?: number; // total referral bonus earned
+  tcSignature?: { dataUrl: string; signedAt: number };
 }
 
 export interface Trade {
@@ -230,4 +231,73 @@ export function getHoldingQty(userId: string, symbol: string): number {
     (acc, t) => (t.type === "BUY" ? acc + t.quantity : acc - t.quantity),
     0,
   );
+}
+
+// ─── Daily Videos ─────────────────────────────────────────────────────────────
+
+const DAILY_VIDEOS_KEY = "ri_daily_videos";
+
+export interface DailyVideo {
+  id: string;
+  title: string;
+  caption?: string;
+  videoUrl: string;
+  addedAt: number;
+  addedDate: string;
+}
+
+function getISTDateString(): string {
+  const now = new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const ist = new Date(now.getTime() + istOffset);
+  return ist.toISOString().split("T")[0];
+}
+
+function isAfter11pmIST(): boolean {
+  const now = new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const ist = new Date(now.getTime() + istOffset);
+  return ist.getUTCHours() >= 23;
+}
+
+export function getDailyVideos(): DailyVideo[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(DAILY_VIDEOS_KEY) || "[]");
+    const today = getISTDateString();
+    if (isAfter11pmIST()) {
+      localStorage.removeItem(DAILY_VIDEOS_KEY);
+      return [];
+    }
+    const filtered = raw.filter((v: DailyVideo) => v.addedDate === today);
+    if (filtered.length !== raw.length) {
+      localStorage.setItem(DAILY_VIDEOS_KEY, JSON.stringify(filtered));
+    }
+    return filtered;
+  } catch {
+    return [];
+  }
+}
+
+export function addDailyVideo(
+  video: Omit<DailyVideo, "id" | "addedAt" | "addedDate">,
+): DailyVideo {
+  const videos = getDailyVideos();
+  const newVideo: DailyVideo = {
+    ...video,
+    id: Date.now().toString(),
+    addedAt: Date.now(),
+    addedDate: getISTDateString(),
+  };
+  videos.push(newVideo);
+  localStorage.setItem(DAILY_VIDEOS_KEY, JSON.stringify(videos));
+  return newVideo;
+}
+
+export function deleteDailyVideo(id: string) {
+  const videos = getDailyVideos().filter((v) => v.id !== id);
+  localStorage.setItem(DAILY_VIDEOS_KEY, JSON.stringify(videos));
+}
+
+export function clearDailyVideos() {
+  localStorage.removeItem(DAILY_VIDEOS_KEY);
 }

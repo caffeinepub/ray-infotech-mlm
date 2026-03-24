@@ -6,12 +6,16 @@ import {
   BarChart2,
   BookOpen,
   Briefcase,
+  Check,
+  Copy,
   Gift,
+  Share2,
   TrendingDown,
   TrendingUp,
   Wallet,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useAuth } from "../hooks/useAuth";
 import { getSimulatedPrices, isMarketOpen } from "../lib/assets";
 import { getHoldings, getTradesByUser } from "../lib/store";
@@ -22,10 +26,16 @@ export default function DashboardPage() {
   const [prices, setPrices] = useState<Record<string, number>>(
     getSimulatedPrices(),
   );
+  const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
 
   useEffect(() => {
     if (!user) {
       navigate({ to: "/login" });
+      return;
+    }
+    if (user && !user.tcSignature) {
+      navigate({ to: "/esign" });
       return;
     }
     // Refresh user data every 5 seconds so referral bonus & balance updates appear live
@@ -55,6 +65,41 @@ export default function DashboardPage() {
 
   const fmt = (n: number) =>
     `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+
+  const referralMessage = `Join RAY INFOTECH Demo Trading Platform! Use my referral ID ${user.id} to register. Start trading with ₹1000000 virtual money. Join now: ${window.location.origin}/register`;
+
+  const handleCopyId = async () => {
+    try {
+      await navigator.clipboard.writeText(user.id);
+      setCopied(true);
+      toast.success("Referral ID copied!");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy");
+    }
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "RAY INFOTECH Demo Trading Platform",
+          text: referralMessage,
+        });
+      } catch {
+        // User cancelled share, do nothing
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(referralMessage);
+        setShared(true);
+        toast.success("Referral link copied to clipboard!");
+        setTimeout(() => setShared(false), 2000);
+      } catch {
+        toast.error("Failed to copy referral message");
+      }
+    }
+  };
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
@@ -183,6 +228,7 @@ export default function DashboardPage() {
           onClick={() => navigate({ to: "/trade" })}
           className="h-16 flex-col gap-1 bg-gold-500/10 border border-gold-500/30 text-gold-400 hover:bg-gold-500/20"
           variant="outline"
+          data-ocid="dashboard.trade_button"
         >
           <Briefcase size={20} />
           <span className="text-sm">Trade Now</span>
@@ -191,6 +237,7 @@ export default function DashboardPage() {
           onClick={() => navigate({ to: "/market" })}
           className="h-16 flex-col gap-1"
           variant="outline"
+          data-ocid="dashboard.market_button"
         >
           <BarChart2 size={20} />
           <span className="text-sm">View Market</span>
@@ -199,11 +246,97 @@ export default function DashboardPage() {
           onClick={() => navigate({ to: "/portfolio" })}
           className="h-16 flex-col gap-1"
           variant="outline"
+          data-ocid="dashboard.portfolio_button"
         >
           <BookOpen size={20} />
           <span className="text-sm">Portfolio</span>
         </Button>
       </div>
+
+      {/* Refer & Earn Card — shown only for approved members */}
+      {isApproved && (
+        <Card
+          className="mb-6 border border-gold-500/30 bg-gradient-to-br from-gold-500/5 to-amber-500/5"
+          data-ocid="referral.card"
+        >
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Share2 size={16} className="text-gold-400" />
+              Refer &amp; Earn ₹5 per Friend
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Share your referral ID with friends. When they register and get
+              approved, ₹5 virtual money is added to your balance.
+            </p>
+
+            {/* Referral ID box */}
+            <div className="flex items-center gap-2">
+              <div
+                className="flex-1 bg-background border border-border rounded-lg px-3 py-2 font-mono text-sm text-gold-400 select-all"
+                data-ocid="referral.input"
+              >
+                {user.id}
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleCopyId}
+                className={`gap-1.5 transition-all ${
+                  copied
+                    ? "border-green-500/50 text-green-400"
+                    : "border-gold-500/30 text-gold-400 hover:bg-gold-500/10"
+                }`}
+                data-ocid="referral.copy_button"
+              >
+                {copied ? (
+                  <>
+                    <Check size={14} />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy size={14} />
+                    Copy ID
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Share button */}
+            <Button
+              onClick={handleShare}
+              className={`w-full gap-2 transition-all ${
+                shared
+                  ? "bg-green-500/20 border-green-500/50 text-green-400 hover:bg-green-500/25"
+                  : "bg-gold-500/10 border-gold-500/30 text-gold-400 hover:bg-gold-500/20"
+              }`}
+              variant="outline"
+              data-ocid="referral.share_button"
+            >
+              {shared ? (
+                <>
+                  <Check size={16} />
+                  Referral message copied!
+                </>
+              ) : (
+                <>
+                  <Share2 size={16} />
+                  Share Referral Link
+                </>
+              )}
+            </Button>
+
+            <p className="text-xs text-muted-foreground text-center">
+              Total referral bonus earned:{" "}
+              <span className="text-green-400 font-semibold">
+                {fmt(user.referralBonus ?? 0)}
+              </span>
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Holdings Preview */}
       {holdings.length > 0 && (

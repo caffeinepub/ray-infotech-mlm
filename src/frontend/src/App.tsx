@@ -15,6 +15,7 @@ import { AuthProvider } from "./hooks/useAuth";
 import AdminPanel from "./pages/AdminPanel";
 import ChatbotPage from "./pages/ChatbotPage";
 import DashboardPage from "./pages/DashboardPage";
+import ESignaturePage from "./pages/ESignaturePage";
 import ETFDetailPage from "./pages/ETFDetailPage";
 import EquityDetailPage from "./pages/EquityDetailPage";
 import FNODetailPage from "./pages/FNODetailPage";
@@ -100,6 +101,11 @@ const etfDetailRoute = createRoute({
   path: "/etf/$symbol",
   component: ETFDetailPage,
 });
+const esignRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/esign",
+  component: ESignaturePage,
+});
 const fnoDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/fno/$symbol",
@@ -117,6 +123,7 @@ const routeTree = rootRoute.addChildren([
   watchlistRoute,
   chatbotRoute,
   adminRoute,
+  esignRoute,
   equityDetailRoute,
   etfDetailRoute,
   fnoDetailRoute,

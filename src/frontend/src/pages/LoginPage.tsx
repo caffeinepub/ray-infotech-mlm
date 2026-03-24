@@ -7,6 +7,7 @@ import type React from "react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "../hooks/useAuth";
+import { getCurrentUser } from "../lib/store";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -31,8 +32,13 @@ export default function LoginPage() {
     setLoading(false);
     if (ok) {
       const session = localStorage.getItem("ri_session");
-      if (session === "admin") navigate({ to: "/admin" });
-      else navigate({ to: "/dashboard" });
+      if (session === "admin") {
+        navigate({ to: "/admin" });
+      } else {
+        const u = getCurrentUser();
+        if (u && !u.tcSignature) navigate({ to: "/esign" });
+        else navigate({ to: "/dashboard" });
+      }
     } else {
       toast.error("Invalid email or password");
     }

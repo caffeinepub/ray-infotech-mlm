@@ -1,29 +1,35 @@
-# RAY INFOTECH Demo Trading - Admin Dashboard
+# RAY INFOTECH Demo Trading — E-Signature Terms & Conditions
 
 ## Current State
-The project has an MLM-based backend with member registration, admin controls, and commission calculations. An AdminPanel page exists but is tied to MLM member management.
+The app has a multi-step registration flow (personal info → KYC → payment) stored in localStorage. The User type in store.ts tracks fields like kycStatus, paymentStatus, virtualBalance, etc. After login, users land on DashboardPage. There is no T&C acceptance or e-signature mechanism.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Admin dashboard page for the stock market demo trading platform
-- Stats cards: total members, pending KYC approvals, pending payment approvals, active traders
-- Members table: name, member ID, KYC status, payment status, virtual balance, joined date, actions
-- KYC approval workflow: view submitted Aadhaar/PAN details, approve or reject
-- Payment approval workflow: view uploaded payment proof screenshots, approve or reject
-- Member management: suspend/debar member, delete member, add member manually
-- Navigation sidebar with sections: Overview, Members, KYC Approvals, Payment Approvals, Portfolios
+- New `tcSignature` field on the `User` interface in store.ts: `tcSignature?: { dataUrl: string; signedAt: number; }` — stores the drawn signature as a base64 PNG and timestamp
+- New `ESignaturePage.tsx` at route `/esign` — full-screen mobile-optimized page with:
+  - RAY INFOTECH branding header
+  - Scrollable Terms & Conditions text (platform usage, virtual trading disclaimer, data consent, etc.)
+  - A touch/mouse signature canvas (full-width, ~200px tall, with clear/redo button)
+  - "I have read and agree to the Terms & Conditions" checkbox
+  - "Submit & Accept" button — saves signature + timestamp to localStorage, updates user record
+  - "Decline" link that logs out and redirects to home
+- After login, if the logged-in user does not have `tcSignature`, redirect to `/esign` before allowing access to dashboard
+- Admin panel: show a "T&C Signed" badge in the Members tab next to each member's row
 
 ### Modify
-- AdminPanel page to render the new trading admin dashboard UI
+- `src/frontend/src/lib/store.ts` — add `tcSignature` field to User interface
+- `src/frontend/src/hooks/useAuth.tsx` — after login success, if user has no `tcSignature`, redirect to `/esign` instead of `/dashboard`
+- `src/frontend/src/pages/DashboardPage.tsx` — add a check: if user has no `tcSignature`, redirect to `/esign`
+- `src/frontend/src/App.tsx` — add `/esign` route
+- `src/frontend/src/pages/AdminPanel.tsx` — add T&C signed status column/badge in Members tab
 
 ### Remove
-- Old MLM-specific admin panel UI
+- Nothing removed
 
 ## Implementation Plan
-1. Redesign AdminPanel page with a sidebar layout
-2. Build Overview tab with stat cards (total members, pending KYC, pending payments, active traders)
-3. Build Members tab with searchable table showing all members and management actions
-4. Build KYC Approvals tab with submitted document details and approve/reject actions
-5. Build Payment Approvals tab with proof uploads and approve/reject workflow
-6. Use mock/local state for now since backend trading models aren't yet created
+1. Update User interface in store.ts to add tcSignature field
+2. Create ESignaturePage.tsx with touch-friendly canvas signature, T&C text, checkbox, accept/decline buttons
+3. Add /esign route in App.tsx
+4. Add redirect to /esign in DashboardPage and useAuth hook after login if no signature
+5. Add T&C signed badge in AdminPanel Members tab
