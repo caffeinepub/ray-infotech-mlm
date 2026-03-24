@@ -6,7 +6,7 @@ import {
   BarChart2,
   BookOpen,
   Briefcase,
-  Star,
+  Gift,
   TrendingDown,
   TrendingUp,
   Wallet,
@@ -18,7 +18,7 @@ import { getHoldings, getTradesByUser } from "../lib/store";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, refresh } = useAuth();
   const [prices, setPrices] = useState<Record<string, number>>(
     getSimulatedPrices(),
   );
@@ -28,9 +28,17 @@ export default function DashboardPage() {
       navigate({ to: "/login" });
       return;
     }
-    const interval = setInterval(() => setPrices(getSimulatedPrices()), 5000);
-    return () => clearInterval(interval);
-  }, [user, navigate]);
+    // Refresh user data every 5 seconds so referral bonus & balance updates appear live
+    const refreshInterval = setInterval(() => refresh(), 5000);
+    const priceInterval = setInterval(
+      () => setPrices(getSimulatedPrices()),
+      5000,
+    );
+    return () => {
+      clearInterval(refreshInterval);
+      clearInterval(priceInterval);
+    };
+  }, [user, navigate, refresh]);
 
   if (!user) return null;
 
@@ -63,10 +71,16 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-2">
           <div
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${marketOpen ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400"}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${
+              marketOpen
+                ? "bg-green-500/15 text-green-400"
+                : "bg-red-500/15 text-red-400"
+            }`}
           >
             <div
-              className={`w-2 h-2 rounded-full ${marketOpen ? "bg-green-400 animate-pulse" : "bg-red-400"}`}
+              className={`w-2 h-2 rounded-full ${
+                marketOpen ? "bg-green-400 animate-pulse" : "bg-red-400"
+              }`}
             />
             Market {marketOpen ? "OPEN" : "CLOSED"}
           </div>
@@ -91,6 +105,22 @@ export default function DashboardPage() {
             — Admin will review and approve shortly. You'll receive ₹1000000
             virtual balance once approved.
           </p>
+        </div>
+      )}
+
+      {/* Referral Bonus Banner */}
+      {(user.referralBonus ?? 0) > 0 && (
+        <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 mb-6 flex items-center gap-3">
+          <Gift size={18} className="text-green-400 flex-shrink-0" />
+          <div>
+            <p className="text-green-400 text-sm font-semibold">
+              Referral Bonus Earned: {fmt(user.referralBonus ?? 0)}
+            </p>
+            <p className="text-muted-foreground text-xs mt-0.5">
+              ₹5 has been added to your virtual balance for each client you
+              referred who got approved.
+            </p>
+          </div>
         </div>
       )}
 
@@ -127,7 +157,9 @@ export default function DashboardPage() {
               Total P&L
             </div>
             <div
-              className={`text-xl font-bold ${totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}
+              className={`text-xl font-bold ${
+                totalPnl >= 0 ? "text-green-400" : "text-red-400"
+              }`}
             >
               {totalPnl >= 0 ? "+" : ""}
               {fmt(totalPnl)}
@@ -197,7 +229,9 @@ export default function DashboardPage() {
                       {fmt(h.currentPrice * h.quantity)}
                     </div>
                     <div
-                      className={`text-xs ${h.pnl >= 0 ? "text-green-400" : "text-red-400"}`}
+                      className={`text-xs ${
+                        h.pnl >= 0 ? "text-green-400" : "text-red-400"
+                      }`}
                     >
                       {h.pnl >= 0 ? "+" : ""}
                       {fmt(h.pnl)} ({h.pnlPct.toFixed(2)}%)

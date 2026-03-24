@@ -6,7 +6,15 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronDown, ChevronUp, Search, Star, StarOff, X } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Search,
+  Star,
+  StarOff,
+  Trash2,
+  X,
+} from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "../hooks/useAuth";
@@ -14,36 +22,68 @@ import { ASSETS, getSimulatedPrices, isMarketOpen } from "../lib/assets";
 import type { Asset } from "../lib/assets";
 import { addTrade, getHoldingQty, getUserById, updateUser } from "../lib/store";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type OrderMode = "INTRADAY" | "DELIVERY";
+type OrderVariant = "MARKET" | "LIMIT" | "SL" | "GTT";
+
+interface GTTOrder {
+  id: string;
+  userId: string;
+  symbol: string;
+  name: string;
+  type: "BUY" | "SELL";
+  qty: number;
+  triggerPrice: number;
+  limitPrice: number;
+  timestamp: number;
+  orderMode: OrderMode;
+}
+
 // ─── Charges Calculator ───────────────────────────────────────────────────────
 
 interface Charges {
   tradeValue: number;
   brokerage: number;
+  intradayBrokerage: number;
   stt: number;
   exchangeCharges: number;
   gst: number;
   sebiCharges: number;
   stampDuty: number;
   totalCharges: number;
-  netAmount: number; // BUY: tradeValue + totalCharges | SELL: tradeValue - totalCharges
+  netAmount: number;
 }
 
-function calculateCharges(tradeValue: number, type: "BUY" | "SELL"): Charges {
+function calculateCharges(
+  tradeValue: number,
+  type: "BUY" | "SELL",
+  isIntraday: boolean,
+  quantity: number,
+): Charges {
   const brokerage = 0.5;
-  const stt = tradeValue * 0.001; // 0.1%
-  const exchangeCharges = tradeValue * 0.0000345; // 0.00345%
-  const gst = (brokerage + exchangeCharges) * 0.18; // 18% on brokerage + exchange
-  const sebiCharges = tradeValue * 0.000001; // 0.0001%
-  const stampDuty = type === "BUY" ? tradeValue * 0.00015 : 0; // 0.015% only on BUY
+  const intradayBrokerage = isIntraday && type === "BUY" ? 0.3 * quantity : 0;
+  const stt = tradeValue * 0.001;
+  const exchangeCharges = tradeValue * 0.0000345;
+  const gst = (brokerage + exchangeCharges) * 0.18;
+  const sebiCharges = tradeValue * 0.000001;
+  const stampDuty = type === "BUY" ? tradeValue * 0.00015 : 0;
 
   const totalCharges =
-    brokerage + stt + exchangeCharges + gst + sebiCharges + stampDuty;
+    brokerage +
+    intradayBrokerage +
+    stt +
+    exchangeCharges +
+    gst +
+    sebiCharges +
+    stampDuty;
   const netAmount =
     type === "BUY" ? tradeValue + totalCharges : tradeValue - totalCharges;
 
   return {
     tradeValue,
     brokerage,
+    intradayBrokerage,
     stt,
     exchangeCharges,
     gst,
@@ -54,12 +94,37 @@ function calculateCharges(tradeValue: number, type: "BUY" | "SELL"): Charges {
   };
 }
 
+// ─── GTT helpers ──────────────────────────────────────────────────────────────
+
+function gttKey(userId: string) {
+  return `gtt_orders_${userId}`;
+}
+
+function loadGTTOrders(userId: string): GTTOrder[] {
+  try {
+    return JSON.parse(localStorage.getItem(gttKey(userId)) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveGTTOrders(userId: string, orders: GTTOrder[]) {
+  localStorage.setItem(gttKey(userId), JSON.stringify(orders));
+}
+
 // ─── Charges Breakdown UI ─────────────────────────────────────────────────────
 
 function ChargesBreakdown({
   charges,
   type,
-}: { charges: Charges; type: "BUY" | "SELL" }) {
+  orderMode,
+  orderVariant,
+}: {
+  charges: Charges;
+  type: "BUY" | "SELL";
+  orderMode: OrderMode;
+  orderVariant: OrderVariant;
+}) {
   const [open, setOpen] = useState(false);
   const fmt2 = (n: number) =>
     `\u20b9${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
@@ -74,7 +139,21 @@ function ChargesBreakdown({
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-3 py-2 font-medium text-muted-foreground hover:text-foreground transition-colors"
       >
-        <span>Charges &amp; Taxes</span>
+        <span className="flex items-center gap-1.5">
+          Charges &amp; Taxes
+          <span
+            className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+              orderMode === "INTRADAY"
+                ? "bg-blue-500/20 text-blue-400"
+                : "bg-purple-500/20 text-purple-400"
+            }`}
+          >
+            {orderMode}
+          </span>
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-muted text-muted-foreground">
+            {orderVariant}
+          </span>
+        </span>
         <div className="flex items-center gap-1.5">
           <span className="text-foreground font-semibold">
             {fmt2(charges.totalCharges)}
@@ -97,6 +176,12 @@ function ChargesBreakdown({
             <span>Brokerage</span>
             <span>{fmt2(charges.brokerage)}</span>
           </div>
+          {charges.intradayBrokerage > 0 && (
+            <div className="flex justify-between text-blue-400">
+              <span>Intraday Brokerage (₹0.3/share)</span>
+              <span>{fmt2(charges.intradayBrokerage)}</span>
+            </div>
+          )}
           <div className="flex justify-between text-muted-foreground">
             <span>STT (0.1%)</span>
             <span>{fmt2(charges.stt)}</span>
@@ -137,7 +222,6 @@ function ChargesBreakdown({
         </div>
       )}
 
-      {/* Always-visible net amount summary when collapsed */}
       {!open && (
         <div className="px-3 pb-2 flex justify-between font-bold text-xs border-t border-border pt-2">
           <span className="text-muted-foreground">
@@ -152,6 +236,379 @@ function ChargesBreakdown({
   );
 }
 
+// ─── Order Panel Content (reused for desktop + mobile) ───────────────────────
+
+function OrderPanelContent({
+  selected,
+  prices,
+  watchlist,
+  user,
+  orderType,
+  setOrderType,
+  orderMode,
+  setOrderMode,
+  orderVariant,
+  setOrderVariant,
+  qty,
+  setQty,
+  limitPrice,
+  setLimitPrice,
+  triggerPrice,
+  setTriggerPrice,
+  gttLimitPrice,
+  setGttLimitPrice,
+  liveCharges,
+  isApproved,
+  handleTrade,
+  toggleWatch,
+  fmt,
+  isMobile,
+}: {
+  selected: Asset;
+  prices: Record<string, number>;
+  watchlist: string[];
+  user: { id: string; virtualBalance: number };
+  orderType: "BUY" | "SELL";
+  setOrderType: (t: "BUY" | "SELL") => void;
+  orderMode: OrderMode;
+  setOrderMode: (m: OrderMode) => void;
+  orderVariant: OrderVariant;
+  setOrderVariant: (v: OrderVariant) => void;
+  qty: string;
+  setQty: (v: string) => void;
+  limitPrice: string;
+  setLimitPrice: (v: string) => void;
+  triggerPrice: string;
+  setTriggerPrice: (v: string) => void;
+  gttLimitPrice: string;
+  setGttLimitPrice: (v: string) => void;
+  liveCharges: Charges | null;
+  isApproved: boolean;
+  handleTrade: () => void;
+  toggleWatch: (s: string) => void;
+  fmt: (n: number) => string;
+  isMobile?: boolean;
+}) {
+  const cur = prices[selected.symbol] || selected.basePrice;
+
+  return (
+    <div className="space-y-3">
+      {/* Stock info */}
+      <div className="bg-muted/50 rounded-lg p-3">
+        <div className="flex items-center justify-between">
+          <div className="text-xs text-muted-foreground">{selected.name}</div>
+          <button
+            type="button"
+            onClick={() => toggleWatch(selected.symbol)}
+            className={`p-1 rounded transition-colors ${
+              watchlist.includes(selected.symbol)
+                ? "text-yellow-400 hover:text-yellow-300"
+                : "text-muted-foreground hover:text-yellow-400"
+            }`}
+          >
+            {watchlist.includes(selected.symbol) ? (
+              <Star size={15} fill="currentColor" />
+            ) : (
+              <StarOff size={15} />
+            )}
+          </button>
+        </div>
+        <div className="text-2xl font-bold">{fmt(cur)}</div>
+        {selected.type === "FNO" && (
+          <div className="text-xs text-muted-foreground">
+            Lot size: {selected.lotSize}
+          </div>
+        )}
+        <div className="text-xs text-muted-foreground mt-1">
+          Holdings: {getHoldingQty(user.id, selected.symbol)} shares
+        </div>
+      </div>
+
+      {/* Intraday / Delivery toggle */}
+      <div
+        className="grid grid-cols-2 gap-1 bg-muted/40 rounded-lg p-1"
+        data-ocid="trade.order_mode.toggle"
+      >
+        <button
+          type="button"
+          onClick={() => setOrderMode("INTRADAY")}
+          className={`py-1.5 rounded-md text-xs font-semibold transition-colors ${
+            orderMode === "INTRADAY"
+              ? "bg-blue-600 text-white"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Intraday
+        </button>
+        <button
+          type="button"
+          onClick={() => setOrderMode("DELIVERY")}
+          className={`py-1.5 rounded-md text-xs font-semibold transition-colors ${
+            orderMode === "DELIVERY"
+              ? "bg-purple-600 text-white"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Delivery (CNC)
+        </button>
+      </div>
+
+      {/* BUY / SELL */}
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          data-ocid={
+            isMobile ? "trade.mobile.buy.toggle" : "trade.buy.primary_button"
+          }
+          onClick={() => setOrderType("BUY")}
+          className={`py-2 rounded-lg text-sm font-bold transition-colors ${
+            orderType === "BUY"
+              ? "bg-green-600 text-white"
+              : "border border-green-600 text-green-500"
+          }`}
+        >
+          BUY
+        </button>
+        <button
+          type="button"
+          data-ocid={
+            isMobile ? "trade.mobile.sell.toggle" : "trade.sell.primary_button"
+          }
+          onClick={() => setOrderType("SELL")}
+          className={`py-2 rounded-lg text-sm font-bold transition-colors ${
+            orderType === "SELL"
+              ? "bg-red-600 text-white"
+              : "border border-red-600 text-red-500"
+          }`}
+        >
+          SELL
+        </button>
+      </div>
+
+      {/* Order variant selector */}
+      <div
+        className="grid grid-cols-4 gap-1 bg-muted/40 rounded-lg p-1"
+        data-ocid="trade.order_variant.toggle"
+      >
+        {(["MARKET", "LIMIT", "SL", "GTT"] as OrderVariant[]).map((v) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setOrderVariant(v)}
+            className={`py-1 rounded text-[11px] font-semibold transition-colors ${
+              orderVariant === v
+                ? "bg-yellow-500 text-black"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {v === "SL" ? "Stop Loss" : v}
+          </button>
+        ))}
+      </div>
+
+      {/* Quantity */}
+      <div>
+        <Label className="text-xs mb-1 block">Quantity</Label>
+        <Input
+          data-ocid={isMobile ? "trade.mobile.qty.input" : "trade.qty.input"}
+          type="number"
+          min="1"
+          value={qty}
+          onChange={(e) => setQty(e.target.value)}
+          placeholder="Number of shares"
+        />
+      </div>
+
+      {/* Limit price for LIMIT order */}
+      {orderVariant === "LIMIT" && (
+        <div>
+          <Label className="text-xs mb-1 block">Limit Price (₹)</Label>
+          <Input
+            data-ocid="trade.limit_price.input"
+            type="number"
+            min="0"
+            value={limitPrice}
+            onChange={(e) => setLimitPrice(e.target.value)}
+            placeholder={`Current: ${fmt(cur)}`}
+          />
+        </div>
+      )}
+
+      {/* Trigger price for SL */}
+      {orderVariant === "SL" && (
+        <div>
+          <Label className="text-xs mb-1 block">Trigger Price (₹)</Label>
+          <Input
+            data-ocid="trade.trigger_price.input"
+            type="number"
+            min="0"
+            value={triggerPrice}
+            onChange={(e) => setTriggerPrice(e.target.value)}
+            placeholder={`Current: ${fmt(cur)}`}
+          />
+          {triggerPrice && (
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Stop Loss @ ₹{triggerPrice} — executes at market price for demo
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* GTT inputs */}
+      {orderVariant === "GTT" && (
+        <div className="space-y-2">
+          <div>
+            <Label className="text-xs mb-1 block">Trigger Price (₹)</Label>
+            <Input
+              data-ocid="trade.gtt_trigger.input"
+              type="number"
+              min="0"
+              value={triggerPrice}
+              onChange={(e) => setTriggerPrice(e.target.value)}
+              placeholder={`e.g. ${fmt(cur * 0.95)}`}
+            />
+          </div>
+          <div>
+            <Label className="text-xs mb-1 block">Limit Price (₹)</Label>
+            <Input
+              data-ocid="trade.gtt_limit.input"
+              type="number"
+              min="0"
+              value={gttLimitPrice}
+              onChange={(e) => setGttLimitPrice(e.target.value)}
+              placeholder={`e.g. ${fmt(cur * 0.96)}`}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Charges */}
+      {liveCharges && orderVariant !== "GTT" && (
+        <ChargesBreakdown
+          charges={liveCharges}
+          type={orderType}
+          orderMode={orderMode}
+          orderVariant={orderVariant}
+        />
+      )}
+
+      {orderVariant === "GTT" && (
+        <div className="rounded-lg bg-yellow-500/10 border border-yellow-500/30 p-3 text-xs text-yellow-400">
+          GTT order will be stored as pending. Balance is NOT deducted until the
+          order triggers.
+        </div>
+      )}
+
+      {/* Submit button */}
+      <Button
+        data-ocid={
+          isMobile
+            ? "trade.mobile.order.submit_button"
+            : "trade.order.submit_button"
+        }
+        className={`w-full font-semibold ${
+          orderType === "BUY"
+            ? "bg-green-600 hover:bg-green-700"
+            : "bg-red-600 hover:bg-red-700"
+        } text-white`}
+        onClick={handleTrade}
+        disabled={!isApproved}
+      >
+        {orderVariant === "GTT"
+          ? "Place GTT Order"
+          : `Place ${orderType} Order`}
+      </Button>
+
+      {!isApproved && (
+        <p className="text-xs text-yellow-400 text-center">
+          Account pending approval
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── GTT Orders Panel ─────────────────────────────────────────────────────────
+
+function GTTOrdersPanel({
+  userId,
+  fmt,
+}: { userId: string; fmt: (n: number) => string }) {
+  const [open, setOpen] = useState(false);
+  const [orders, setOrders] = useState<GTTOrder[]>(() => loadGTTOrders(userId));
+
+  const remove = (id: string) => {
+    const updated = orders.filter((o) => o.id !== id);
+    saveGTTOrders(userId, updated);
+    setOrders(updated);
+    toast.success("GTT order cancelled");
+  };
+
+  if (orders.length === 0) return null;
+
+  return (
+    <Card className="mt-4" data-ocid="trade.gtt.panel">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold hover:bg-muted/30 transition-colors rounded-t-lg"
+      >
+        <span className="flex items-center gap-2">
+          GTT Orders
+          <span className="bg-yellow-500 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+            {orders.length}
+          </span>
+        </span>
+        {open ? (
+          <ChevronUp className="w-4 h-4" />
+        ) : (
+          <ChevronDown className="w-4 h-4" />
+        )}
+      </button>
+      {open && (
+        <CardContent className="pt-0 pb-3 space-y-2">
+          {orders.map((o, idx) => (
+            <div
+              key={o.id}
+              data-ocid={`trade.gtt.item.${idx + 1}`}
+              className="flex items-center justify-between bg-muted/40 rounded-lg px-3 py-2 text-xs"
+            >
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold">{o.symbol}</span>
+                  <span
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                      o.type === "BUY"
+                        ? "bg-green-500/20 text-green-400"
+                        : "bg-red-500/20 text-red-400"
+                    }`}
+                  >
+                    {o.type}
+                  </span>
+                  <span className="text-muted-foreground">{o.orderMode}</span>
+                </div>
+                <div className="text-muted-foreground">
+                  Qty: {o.qty} | Trigger: {fmt(o.triggerPrice)} | Limit:{" "}
+                  {fmt(o.limitPrice)}
+                </div>
+              </div>
+              <button
+                type="button"
+                data-ocid={`trade.gtt.delete_button.${idx + 1}`}
+                onClick={() => remove(o.id)}
+                className="ml-3 text-red-400 hover:text-red-300 transition-colors p-1"
+                title="Cancel GTT order"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+        </CardContent>
+      )}
+    </Card>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function TradePage() {
@@ -163,6 +620,11 @@ export default function TradePage() {
   const [selected, setSelected] = useState<Asset | null>(null);
   const [qty, setQty] = useState("1");
   const [orderType, setOrderType] = useState<"BUY" | "SELL">("BUY");
+  const [orderMode, setOrderMode] = useState<OrderMode>("INTRADAY");
+  const [orderVariant, setOrderVariant] = useState<OrderVariant>("MARKET");
+  const [limitPrice, setLimitPrice] = useState("");
+  const [triggerPrice, setTriggerPrice] = useState("");
+  const [gttLimitPrice, setGttLimitPrice] = useState("");
   const [search, setSearch] = useState("");
   const marketOpen = isMarketOpen();
   const orderPanelRef = useRef<HTMLDivElement>(null);
@@ -242,8 +704,75 @@ export default function TradePage() {
     }
     const price = prices[selected.symbol] || selected.basePrice;
     const tradeValue = price * quantity;
-    const charges = calculateCharges(tradeValue, orderType);
+    const isIntraday = orderMode === "INTRADAY";
 
+    // GTT: store and exit
+    if (orderVariant === "GTT") {
+      const tp = Number.parseFloat(triggerPrice);
+      const lp = Number.parseFloat(gttLimitPrice);
+      if (!tp || !lp) {
+        toast.error("Enter both Trigger Price and Limit Price for GTT");
+        return;
+      }
+      const newOrder: GTTOrder = {
+        id: `GTT${Date.now()}`,
+        userId: user.id,
+        symbol: selected.symbol,
+        name: selected.name,
+        type: orderType,
+        qty: quantity,
+        triggerPrice: tp,
+        limitPrice: lp,
+        timestamp: Date.now(),
+        orderMode,
+      };
+      const existing = loadGTTOrders(user.id);
+      saveGTTOrders(user.id, [...existing, newOrder]);
+      toast.success(
+        `GTT order placed. It will trigger when price hits ₹${tp}.`,
+      );
+      setTriggerPrice("");
+      setGttLimitPrice("");
+      return;
+    }
+
+    // LIMIT: check price condition
+    if (orderVariant === "LIMIT") {
+      const lp = Number.parseFloat(limitPrice);
+      if (!lp) {
+        toast.error("Enter a limit price");
+        return;
+      }
+      const conditionMet = orderType === "BUY" ? price <= lp : price >= lp;
+      if (!conditionMet) {
+        // Store as pending — don't deduct balance
+        const pendingKey = `pending_orders_${user.id}`;
+        const pending = JSON.parse(localStorage.getItem(pendingKey) || "[]");
+        pending.push({
+          id: `PENDING${Date.now()}`,
+          symbol: selected.symbol,
+          type: orderType,
+          qty: quantity,
+          limitPrice: lp,
+          timestamp: Date.now(),
+        });
+        localStorage.setItem(pendingKey, JSON.stringify(pending));
+        toast.info(
+          `Limit price not met. Order placed as pending (Limit: ₹${lp}, Current: ₹${price.toFixed(2)}).`,
+        );
+        setLimitPrice("");
+        return;
+      }
+    }
+
+    const charges = calculateCharges(
+      tradeValue,
+      orderType,
+      isIntraday,
+      quantity,
+    );
+
+    // SL: show note but execute at market
     const freshUser = getUserById(user.id);
     if (!freshUser) return;
 
@@ -284,10 +813,14 @@ export default function TradePage() {
     const fmtFull = (n: number) =>
       `\u20b9${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+    const slNote =
+      orderVariant === "SL" && triggerPrice ? ` [SL @ ₹${triggerPrice}]` : "";
     toast.success(
-      `${orderType} order placed: ${quantity} × ${selected.symbol} @ ${fmt(price)} | Net ${orderType === "BUY" ? "paid" : "received"}: ${fmtFull(charges.netAmount)} (charges: ${fmtFull(charges.totalCharges)})`,
+      `${orderType} order placed${slNote}: ${quantity} × ${selected.symbol} @ ${fmt(price)} | Net ${orderType === "BUY" ? "paid" : "received"}: ${fmtFull(charges.netAmount)} (charges: ${fmtFull(charges.totalCharges)})`,
     );
     setQty("1");
+    setTriggerPrice("");
+    setLimitPrice("");
   };
 
   // Compute live charges for the current selection
@@ -296,8 +829,39 @@ export default function TradePage() {
     const quantity = Number.parseInt(qty) || 0;
     if (quantity < 1) return null;
     const price = prices[selected.symbol] || selected.basePrice;
-    return calculateCharges(price * quantity, orderType);
+    return calculateCharges(
+      price * quantity,
+      orderType,
+      orderMode === "INTRADAY",
+      quantity,
+    );
   })();
+
+  const orderPanelProps = {
+    selected: selected!,
+    prices,
+    watchlist,
+    user,
+    orderType,
+    setOrderType,
+    orderMode,
+    setOrderMode,
+    orderVariant,
+    setOrderVariant,
+    qty,
+    setQty,
+    limitPrice,
+    setLimitPrice,
+    triggerPrice,
+    setTriggerPrice,
+    gttLimitPrice,
+    setGttLimitPrice,
+    liveCharges,
+    isApproved,
+    handleTrade,
+    toggleWatch,
+    fmt,
+  };
 
   const AssetRow = ({ a, idx }: { a: Asset; idx: number }) => {
     const cur = prices[a.symbol] || a.basePrice;
@@ -529,118 +1093,32 @@ export default function TradePage() {
               </TabsContent>
             </Tabs>
           )}
+
+          {/* GTT Orders panel below asset list on desktop */}
+          <GTTOrdersPanel userId={user.id} fmt={fmt} />
         </div>
 
         {/* Order Panel - desktop only */}
         <div className="hidden lg:block lg:col-span-2" ref={orderPanelRef}>
           <Card className="sticky top-20">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">
+              <CardTitle className="text-base flex items-center gap-2">
                 {selected ? selected.symbol : "Select a Stock"}
                 {selected && (
-                  <Badge className="ml-2 text-xs" variant="outline">
+                  <Badge className="text-xs" variant="outline">
                     {selected.type}
                   </Badge>
                 )}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {selected && (
-                <div className="bg-muted/50 rounded-lg p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs text-muted-foreground">
-                      {selected.name}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => toggleWatch(selected.symbol)}
-                      className={`p-1 rounded transition-colors ${
-                        watchlist.includes(selected.symbol)
-                          ? "text-yellow-400 hover:text-yellow-300"
-                          : "text-muted-foreground hover:text-yellow-400"
-                      }`}
-                      title={
-                        watchlist.includes(selected.symbol)
-                          ? "Remove from watchlist"
-                          : "Add to watchlist"
-                      }
-                    >
-                      {watchlist.includes(selected.symbol) ? (
-                        <Star size={15} fill="currentColor" />
-                      ) : (
-                        <StarOff size={15} />
-                      )}
-                    </button>
-                  </div>
-                  <div className="text-2xl font-bold">
-                    {fmt(prices[selected.symbol] || selected.basePrice)}
-                  </div>
-                  {selected.type === "FNO" && (
-                    <div className="text-xs text-muted-foreground">
-                      Lot size: {selected.lotSize}
-                    </div>
-                  )}
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Holdings: {getHoldingQty(user.id, selected.symbol)} shares
-                  </div>
-                </div>
+            <CardContent>
+              {selected ? (
+                <OrderPanelContent {...orderPanelProps} isMobile={false} />
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  Click BUY or SELL on any stock to start trading
+                </p>
               )}
-
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  data-ocid="trade.buy.primary_button"
-                  variant={orderType === "BUY" ? "default" : "outline"}
-                  className={
-                    orderType === "BUY"
-                      ? "bg-green-600 hover:bg-green-700 text-white"
-                      : ""
-                  }
-                  onClick={() => setOrderType("BUY")}
-                >
-                  BUY
-                </Button>
-                <Button
-                  data-ocid="trade.sell.primary_button"
-                  variant={orderType === "SELL" ? "default" : "outline"}
-                  className={
-                    orderType === "SELL"
-                      ? "bg-red-600 hover:bg-red-700 text-white"
-                      : ""
-                  }
-                  onClick={() => setOrderType("SELL")}
-                >
-                  SELL
-                </Button>
-              </div>
-
-              <div>
-                <Label>Quantity</Label>
-                <Input
-                  data-ocid="trade.qty.input"
-                  type="number"
-                  min="1"
-                  value={qty}
-                  onChange={(e) => setQty(e.target.value)}
-                  placeholder="Number of shares"
-                />
-              </div>
-
-              {selected && qty && liveCharges && (
-                <ChargesBreakdown charges={liveCharges} type={orderType} />
-              )}
-
-              <Button
-                data-ocid="trade.order.submit_button"
-                className={`w-full font-semibold ${
-                  orderType === "BUY"
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-red-600 hover:bg-red-700"
-                } text-white`}
-                onClick={handleTrade}
-                disabled={!selected || !isApproved}
-              >
-                Place {orderType} Order
-              </Button>
             </CardContent>
           </Card>
         </div>
@@ -649,28 +1127,16 @@ export default function TradePage() {
       {/* Mobile sticky bottom order panel */}
       {selected && (
         <div
-          className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border rounded-t-2xl shadow-2xl p-4"
+          className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border rounded-t-2xl shadow-2xl p-4 max-h-[80vh] overflow-y-auto"
           data-ocid="trade.order.panel"
         >
           <div className="flex items-center justify-between mb-3">
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-base">{selected.symbol}</span>
-                <button
-                  type="button"
-                  onClick={() => toggleWatch(selected.symbol)}
-                  className={`transition-colors ${
-                    watchlist.includes(selected.symbol)
-                      ? "text-yellow-400"
-                      : "text-muted-foreground hover:text-yellow-400"
-                  }`}
-                >
-                  {watchlist.includes(selected.symbol) ? (
-                    <Star size={14} fill="currentColor" />
-                  ) : (
-                    <StarOff size={14} />
-                  )}
-                </button>
+                <Badge variant="outline" className="text-[10px]">
+                  {selected.type}
+                </Badge>
               </div>
               <div className="text-xs text-muted-foreground">
                 {selected.name}
@@ -680,11 +1146,6 @@ export default function TradePage() {
               <div className="text-lg font-bold">
                 {fmt(prices[selected.symbol] || selected.basePrice)}
               </div>
-              {selected.type === "FNO" && (
-                <div className="text-xs text-muted-foreground">
-                  Lot: {selected.lotSize}
-                </div>
-              )}
             </div>
             <button
               type="button"
@@ -696,67 +1157,7 @@ export default function TradePage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 mb-3">
-            <button
-              type="button"
-              data-ocid="trade.mobile.buy.toggle"
-              onClick={() => setOrderType("BUY")}
-              className={`py-2 rounded-lg text-sm font-bold transition-colors ${
-                orderType === "BUY"
-                  ? "bg-green-600 text-white"
-                  : "border border-green-600 text-green-500"
-              }`}
-            >
-              BUY
-            </button>
-            <button
-              type="button"
-              data-ocid="trade.mobile.sell.toggle"
-              onClick={() => setOrderType("SELL")}
-              className={`py-2 rounded-lg text-sm font-bold transition-colors ${
-                orderType === "SELL"
-                  ? "bg-red-600 text-white"
-                  : "border border-red-600 text-red-500"
-              }`}
-            >
-              SELL
-            </button>
-          </div>
-
-          <div className="flex gap-2 mb-3">
-            <Input
-              data-ocid="trade.mobile.qty.input"
-              type="number"
-              min="1"
-              value={qty}
-              onChange={(e) => setQty(e.target.value)}
-              placeholder="Qty"
-              className="w-24"
-            />
-            <Button
-              data-ocid="trade.mobile.order.submit_button"
-              onClick={handleTrade}
-              disabled={!isApproved}
-              className={`font-semibold ${
-                orderType === "BUY"
-                  ? "bg-green-600 hover:bg-green-700"
-                  : "bg-red-600 hover:bg-red-700"
-              } text-white`}
-            >
-              Place {orderType}
-            </Button>
-          </div>
-
-          {/* Mobile charges breakdown */}
-          {liveCharges && (
-            <ChargesBreakdown charges={liveCharges} type={orderType} />
-          )}
-
-          {!isApproved && (
-            <p className="text-xs text-yellow-400 mt-2">
-              Account pending approval
-            </p>
-          )}
+          <OrderPanelContent {...orderPanelProps} isMobile={true} />
         </div>
       )}
     </div>

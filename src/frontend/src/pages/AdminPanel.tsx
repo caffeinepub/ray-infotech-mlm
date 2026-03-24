@@ -9,6 +9,7 @@ import {
   CheckCircle,
   Eye,
   EyeOff,
+  Gift,
   Shield,
   Users,
   XCircle,
@@ -17,7 +18,12 @@ import type React from "react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "../hooks/useAuth";
-import { getTrades, getUsers, updateUser } from "../lib/store";
+import {
+  creditReferralBonus,
+  getTrades,
+  getUsers,
+  updateUser,
+} from "../lib/store";
 import type { User } from "../lib/store";
 
 function AdminLoginForm() {
@@ -135,6 +141,12 @@ export default function AdminPanel() {
     const updated = { ...u, kycStatus: "approved" as const };
     if (updated.paymentStatus === "approved") updated.virtualBalance = 1000000;
     updateUser(updated);
+    if (updated.paymentStatus === "approved") {
+      const credited = creditReferralBonus(updated);
+      if (credited) {
+        toast.success(`₹5 referral bonus credited to ${updated.referredBy}`);
+      }
+    }
     reload();
     toast.success(`KYC approved for ${u.name}`);
   };
@@ -149,6 +161,12 @@ export default function AdminPanel() {
     const updated = { ...u, paymentStatus: "approved" as const };
     if (updated.kycStatus === "approved") updated.virtualBalance = 1000000;
     updateUser(updated);
+    if (updated.kycStatus === "approved") {
+      const credited = creditReferralBonus(updated);
+      if (credited) {
+        toast.success(`₹5 referral bonus credited to ${updated.referredBy}`);
+      }
+    }
     reload();
     toast.success(`Payment approved for ${u.name}`);
   };
@@ -269,8 +287,14 @@ export default function AdminPanel() {
                     >
                       <div>
                         <div className="font-semibold">{u.name}</div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-xs text-muted-foreground font-mono flex items-center gap-1">
                           {u.id}
+                          {u.referredBy && (
+                            <span className="flex items-center gap-0.5 text-green-400 ml-1">
+                              <Gift size={10} />
+                              ref: {u.referredBy}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="text-right text-xs text-muted-foreground">
@@ -311,6 +335,7 @@ export default function AdminPanel() {
                     <th className="text-left p-3">KYC</th>
                     <th className="text-left p-3">Payment</th>
                     <th className="text-left p-3">Balance</th>
+                    <th className="text-left p-3">Referral Bonus</th>
                     <th className="text-left p-3">Status</th>
                     <th className="text-left p-3">Actions</th>
                   </tr>
@@ -326,6 +351,12 @@ export default function AdminPanel() {
                         <div className="text-xs text-muted-foreground font-mono">
                           {u.id}
                         </div>
+                        {u.referredBy && (
+                          <div className="flex items-center gap-1 text-xs text-green-400 mt-0.5">
+                            <Gift size={10} />
+                            ref: {u.referredBy}
+                          </div>
+                        )}
                       </td>
                       <td className="p-3 text-xs">
                         <div>{u.email}</div>
@@ -339,6 +370,9 @@ export default function AdminPanel() {
                       </td>
                       <td className="p-3 text-xs font-semibold">
                         {fmt(u.virtualBalance)}
+                      </td>
+                      <td className="p-3 text-xs font-semibold text-green-400">
+                        {u.referralBonus ? fmt(u.referralBonus) : "—"}
                       </td>
                       <td className="p-3">
                         <StatusBadge status={u.accountStatus} />
@@ -358,7 +392,7 @@ export default function AdminPanel() {
                   {users.length === 0 && (
                     <tr>
                       <td
-                        colSpan={7}
+                        colSpan={8}
                         className="p-8 text-center text-muted-foreground"
                       >
                         No members registered yet
@@ -399,8 +433,14 @@ export default function AdminPanel() {
                             <span> | DigiLocker: {u.digilockerRef}</span>
                           )}
                         </div>
-                        <div className="text-xs text-muted-foreground mt-1">
+                        <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
                           Joined: {fmtDate(u.createdAt)}
+                          {u.referredBy && (
+                            <span className="flex items-center gap-1 text-green-400">
+                              <Gift size={11} />
+                              Referred by {u.referredBy}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -452,8 +492,14 @@ export default function AdminPanel() {
                         <div className="text-sm text-muted-foreground">
                           Amount: ₹1 | UPI
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-xs text-muted-foreground flex items-center gap-2">
                           Joined: {fmtDate(u.createdAt)}
+                          {u.referredBy && (
+                            <span className="flex items-center gap-1 text-green-400">
+                              <Gift size={11} />
+                              Referred by {u.referredBy}
+                            </span>
+                          )}
                         </div>
                       </div>
                       {u.paymentProof && (
@@ -499,6 +545,7 @@ export default function AdminPanel() {
                   <tr className="text-xs text-muted-foreground">
                     <th className="text-left p-3">Member</th>
                     <th className="text-right p-3">Virtual Balance</th>
+                    <th className="text-right p-3">Referral Bonus</th>
                     <th className="text-right p-3">Trades</th>
                     <th className="text-left p-3">Status</th>
                   </tr>
@@ -520,6 +567,9 @@ export default function AdminPanel() {
                         <td className="text-right p-3 font-semibold">
                           {fmt(u.virtualBalance)}
                         </td>
+                        <td className="text-right p-3 font-semibold text-green-400">
+                          {u.referralBonus ? fmt(u.referralBonus) : "—"}
+                        </td>
                         <td className="text-right p-3">{userTrades.length}</td>
                         <td className="p-3">
                           <StatusBadge status={u.accountStatus} />
@@ -530,7 +580,7 @@ export default function AdminPanel() {
                   {users.length === 0 && (
                     <tr>
                       <td
-                        colSpan={4}
+                        colSpan={5}
                         className="p-8 text-center text-muted-foreground"
                       >
                         No members yet

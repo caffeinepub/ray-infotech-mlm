@@ -10,12 +10,15 @@ export interface User {
   pan: string;
   digilockerRef: string;
   paymentProof: string; // base64
+  selfie?: string; // base64 selfie for KYC
   kycStatus: "pending" | "approved" | "rejected";
   paymentStatus: "pending" | "approved" | "rejected";
   accountStatus: "active" | "debarred";
   virtualBalance: number;
   watchlist: string[];
   createdAt: number;
+  referredBy?: string; // Member ID of referrer
+  referralBonus?: number; // total referral bonus earned
 }
 
 export interface Trade {
@@ -87,6 +90,39 @@ export function nextMemberId(): string {
   const users = getUsers();
   const num = users.length + 1;
   return `RT-${String(num).padStart(6, "0")}`;
+}
+
+// ─── Referral Bonus ───────────────────────────────────────────────────────────
+
+export const REFERRAL_BONUS = 5;
+
+/**
+ * Credit Rs5 referral bonus to the referrer when a referred user becomes
+ * fully approved (both KYC and payment approved). Returns true if credited.
+ */
+export function creditReferralBonus(approvedUser: User): boolean {
+  if (!approvedUser.referredBy) return false;
+  if (
+    approvedUser.kycStatus !== "approved" ||
+    approvedUser.paymentStatus !== "approved"
+  )
+    return false;
+
+  const referrer = getUserById(approvedUser.referredBy);
+  if (!referrer) return false;
+
+  // Avoid double-crediting
+  const bonusKey = `ri_bonus_${approvedUser.id}`;
+  if (localStorage.getItem(bonusKey)) return false;
+
+  const updated = {
+    ...referrer,
+    virtualBalance: referrer.virtualBalance + REFERRAL_BONUS,
+    referralBonus: (referrer.referralBonus || 0) + REFERRAL_BONUS,
+  };
+  updateUser(updated);
+  localStorage.setItem(bonusKey, "1");
+  return true;
 }
 
 // ─── Session ──────────────────────────────────────────────────────────────────

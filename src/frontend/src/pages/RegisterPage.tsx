@@ -2,11 +2,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useNavigate } from "@tanstack/react-router";
-import { CheckCircle, Upload } from "lucide-react";
+import {
+  Camera,
+  CheckCircle,
+  Gift,
+  RefreshCw,
+  Upload,
+  User as UserIcon,
+} from "lucide-react";
 import type React from "react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { getUsers, nextMemberId, saveUsers } from "../lib/store";
+import { getUserById, getUsers, nextMemberId, saveUsers } from "../lib/store";
 import type { User } from "../lib/store";
 
 export default function RegisterPage() {
@@ -20,11 +27,15 @@ export default function RegisterPage() {
     aadhaar: "",
     pan: "",
     digilockerRef: "",
+    referredBy: "",
   });
   const [proof, setProof] = useState<string>("");
   const [proofName, setProofName] = useState("");
+  const [selfie, setSelfie] = useState<string>("");
   const [done, setDone] = useState<User | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const selfieRef = useRef<HTMLInputElement>(null);
+  const selfieUploadRef = useRef<HTMLInputElement>(null);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -39,6 +50,20 @@ export default function RegisterPage() {
     reader.readAsDataURL(file);
   };
 
+  const handleSelfie = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Selfie too large (max 5MB)");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setSelfie(reader.result as string);
+    reader.readAsDataURL(file);
+    // Reset input so same file can be re-selected after retake
+    e.target.value = "";
+  };
+
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     if (!proof) {
@@ -50,16 +75,32 @@ export default function RegisterPage() {
       toast.error("Email already registered");
       return;
     }
+    const referralId = form.referredBy.trim().toUpperCase();
+    if (referralId) {
+      const referrer = getUserById(referralId);
+      if (!referrer) {
+        toast.error("Invalid referral code. Please check and try again.");
+        return;
+      }
+    }
     const newUser: User = {
       id: nextMemberId(),
-      ...form,
+      name: form.name,
+      email: form.email,
+      phone: form.phone,
+      password: form.password,
+      aadhaar: form.aadhaar,
+      pan: form.pan,
+      digilockerRef: form.digilockerRef,
       paymentProof: proof,
+      selfie: selfie || undefined,
       kycStatus: "pending",
       paymentStatus: "pending",
       accountStatus: "active",
       virtualBalance: 0,
       watchlist: [],
       createdAt: Date.now(),
+      referredBy: referralId || undefined,
     };
     users.push(newUser);
     saveUsers(users);
@@ -76,10 +117,19 @@ export default function RegisterPage() {
             Your Member ID:{" "}
             <span className="font-bold text-gold-400">{done.id}</span>
           </p>
-          <p className="text-sm text-muted-foreground mb-6">
+          <p className="text-sm text-muted-foreground mb-4">
             Your registration is under review. Once admin approves your payment
             and KYC, you will receive ₹1000000 virtual balance.
           </p>
+          {done.referredBy && (
+            <div className="flex items-center justify-center gap-1.5 text-xs text-green-400 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2 mb-4">
+              <Gift size={13} />
+              <span>
+                Referred by <strong>{done.referredBy}</strong> — they will earn
+                ₹5 bonus once you are approved!
+              </span>
+            </div>
+          )}
           <Button
             onClick={() => navigate({ to: "/login" })}
             className="w-full bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold"
@@ -98,6 +148,30 @@ export default function RegisterPage() {
         <p className="text-sm text-muted-foreground mb-6">
           Join RAY INFOTECH Demo Trading Platform
         </p>
+
+        {/* Step indicator */}
+        <div className="flex items-center gap-2 mb-6">
+          {[1, 2, 3].map((s) => (
+            <div key={s} className="flex items-center gap-2 flex-1">
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                  step >= s
+                    ? "bg-gold-500 text-navy-900"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {s}
+              </div>
+              {s < 3 && (
+                <div
+                  className={`h-0.5 flex-1 rounded ${
+                    step > s ? "bg-gold-500" : "bg-muted"
+                  }`}
+                />
+              )}
+            </div>
+          ))}
+        </div>
 
         {step === 1 && (
           <div className="space-y-4">
@@ -148,6 +222,24 @@ export default function RegisterPage() {
                 placeholder="Min 6 characters"
                 required
               />
+            </div>
+            <div>
+              <Label>Referral Code (optional)</Label>
+              <Input
+                value={form.referredBy}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    referredBy: e.target.value.toUpperCase(),
+                  }))
+                }
+                placeholder="e.g. RT-000001"
+                data-ocid="register.input"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Enter a member's ID to credit them ₹5 bonus when you get
+                approved.
+              </p>
             </div>
             <Button
               className="w-full bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold"
@@ -207,11 +299,96 @@ export default function RegisterPage() {
                 placeholder="DigiLocker document reference"
               />
             </div>
+
+            {/* Selfie Section */}
+            <div>
+              <Label className="mb-2 block">Selfie Photo *</Label>
+              {selfie ? (
+                <div className="flex items-center gap-4">
+                  <div className="w-20 h-20 rounded-xl overflow-hidden border-2 border-gold-500/50 shrink-0">
+                    <img
+                      src={selfie}
+                      alt="Selfie preview"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-green-400 font-medium mb-2">
+                      ✓ Selfie captured
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-xs border-gold-500/30 hover:border-gold-500 gap-1.5"
+                      onClick={() => setSelfie("")}
+                      data-ocid="kyc.retake_button"
+                    >
+                      <RefreshCw size={12} />
+                      Retake
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Take a clear photo of your face for KYC verification.
+                  </p>
+                  <div className="flex gap-2">
+                    {/* Take Selfie using front camera */}
+                    <button
+                      type="button"
+                      className="flex-1 flex flex-col items-center gap-1.5 border-2 border-dashed border-gold-500/40 rounded-xl p-4 hover:border-gold-500/70 hover:bg-gold-500/5 transition-all cursor-pointer"
+                      onClick={() => selfieRef.current?.click()}
+                      data-ocid="kyc.selfie_button"
+                    >
+                      <Camera size={22} className="text-gold-400" />
+                      <span className="text-xs font-medium">Take Selfie</span>
+                      <span className="text-xs text-muted-foreground">
+                        Front camera
+                      </span>
+                    </button>
+                    {/* Upload Photo */}
+                    <button
+                      type="button"
+                      className="flex-1 flex flex-col items-center gap-1.5 border-2 border-dashed border-border rounded-xl p-4 hover:border-gold-500/40 hover:bg-gold-500/5 transition-all cursor-pointer"
+                      onClick={() => selfieUploadRef.current?.click()}
+                      data-ocid="kyc.upload_button"
+                    >
+                      <UserIcon size={22} className="text-muted-foreground" />
+                      <span className="text-xs font-medium">Upload Photo</span>
+                      <span className="text-xs text-muted-foreground">
+                        From gallery
+                      </span>
+                    </button>
+                  </div>
+                  {/* Hidden input for camera capture */}
+                  <input
+                    ref={selfieRef}
+                    type="file"
+                    accept="image/*"
+                    capture="user"
+                    onChange={handleSelfie}
+                    className="hidden"
+                  />
+                  {/* Hidden input for gallery upload */}
+                  <input
+                    ref={selfieUploadRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleSelfie}
+                    className="hidden"
+                  />
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 className="flex-1"
                 onClick={() => setStep(1)}
+                data-ocid="kyc.back_button"
               >
                 Back
               </Button>
@@ -222,8 +399,13 @@ export default function RegisterPage() {
                     toast.error("Fill Aadhaar and PAN");
                     return;
                   }
+                  if (!selfie) {
+                    toast.error("Please capture or upload a selfie");
+                    return;
+                  }
                   setStep(3);
                 }}
+                data-ocid="kyc.next_button"
               >
                 Next: Payment
               </Button>
@@ -257,6 +439,7 @@ export default function RegisterPage() {
                 type="button"
                 className="w-full border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-gold-500/50 transition-colors"
                 onClick={() => fileRef.current?.click()}
+                data-ocid="payment.upload_button"
               >
                 <Upload
                   size={20}
@@ -284,12 +467,14 @@ export default function RegisterPage() {
                 variant="outline"
                 className="flex-1"
                 onClick={() => setStep(2)}
+                data-ocid="payment.back_button"
               >
                 Back
               </Button>
               <Button
                 type="submit"
                 className="flex-1 bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold"
+                data-ocid="payment.submit_button"
               >
                 Submit Registration
               </Button>

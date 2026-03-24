@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-router";
 import { ThemeProvider } from "next-themes";
 import React from "react";
+import ChatWidget from "./components/ChatWidget";
 import Footer from "./components/Footer";
 import Header from "./components/Header";
 import { AuthProvider } from "./hooks/useAuth";
@@ -30,6 +31,7 @@ function AppLayout() {
         <Outlet />
       </main>
       <Footer />
+      <ChatWidget />
     </div>
   );
 }
