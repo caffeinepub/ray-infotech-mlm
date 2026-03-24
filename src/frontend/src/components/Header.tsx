@@ -68,13 +68,23 @@ export default function Header() {
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-1">
           {!isAdmin && !user && (
-            <button
-              type="button"
-              onClick={() => go("/")}
-              className={`px-3 py-1.5 rounded text-sm flex items-center gap-1.5 ${isActive("/") ? "text-gold-400 bg-navy-700" : "text-navy-300 hover:text-gold-400 hover:bg-navy-800"}`}
-            >
-              <Home size={14} /> Home
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => go("/")}
+                className={`px-3 py-1.5 rounded text-sm flex items-center gap-1.5 ${isActive("/") ? "text-gold-400 bg-navy-700" : "text-navy-300 hover:text-gold-400 hover:bg-navy-800"}`}
+              >
+                <Home size={14} /> Home
+              </button>
+              <button
+                type="button"
+                onClick={() => go("/admin")}
+                data-ocid="admin.link"
+                className={`px-3 py-1.5 rounded text-sm flex items-center gap-1.5 ${isActive("/admin") ? "text-gold-400 bg-navy-700" : "text-navy-300 hover:text-gold-400 hover:bg-navy-800"}`}
+              >
+                <Shield size={14} /> Admin
+              </button>
+            </>
           )}
           {user &&
             memberNav.map((n) => (
@@ -147,14 +157,25 @@ export default function Header() {
       {open && (
         <div className="md:hidden border-t border-navy-700 bg-navy-900 py-2 px-4 space-y-1">
           {!isAdmin && !user && (
-            <button
-              type="button"
-              onClick={() => go("/")}
-              className="w-full text-left px-3 py-2 text-sm text-navy-200 flex items-center gap-2"
-            >
-              <Home size={14} />
-              Home
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => go("/")}
+                className="w-full text-left px-3 py-2 text-sm text-navy-200 flex items-center gap-2"
+              >
+                <Home size={14} />
+                Home
+              </button>
+              <button
+                type="button"
+                onClick={() => go("/admin")}
+                data-ocid="admin.link"
+                className="w-full text-left px-3 py-2 text-sm text-navy-200 flex items-center gap-2"
+              >
+                <Shield size={14} />
+                Admin
+              </button>
+            </>
           )}
           {user &&
             memberNav.map((n) => (
