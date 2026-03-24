@@ -9,8 +9,6 @@ import {
   CheckCircle,
   Eye,
   EyeOff,
-  Lock,
-  Mail,
   Shield,
   Users,
   XCircle,
@@ -67,23 +65,6 @@ function AdminLoginForm() {
             Access the admin control panel
           </p>
 
-          {/* Credentials hint box */}
-          <div className="bg-muted/50 border border-border rounded-xl p-3 mb-5">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              Admin Credentials
-            </p>
-            <div className="flex items-center gap-2 text-sm">
-              <Mail size={13} className="text-gold-400 shrink-0" />
-              <span className="font-mono text-foreground">
-                admin@rayinfotech.com
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-sm mt-1">
-              <Lock size={13} className="text-gold-400 shrink-0" />
-              <span className="font-mono text-foreground">admin123</span>
-            </div>
-          </div>
-
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label htmlFor="admin-email">Email</Label>
@@ -92,7 +73,7 @@ function AdminLoginForm() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@rayinfotech.com"
+                placeholder="Enter admin email"
                 required
                 data-ocid="admin.input"
               />
