@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "@tanstack/react-router";
 import {
+  ChevronRight,
   Search,
   Star,
   StarOff,
@@ -11,7 +12,8 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import type React from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "../hooks/useAuth";
 import { ASSETS, getSimulatedPrices } from "../lib/assets";
@@ -40,7 +42,14 @@ export default function WatchlistPage() {
   const fmt = (n: number) =>
     `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
-  const toggleWatch = (symbol: string) => {
+  const getDetailPath = (type: string, symbol: string): string => {
+    if (type === "EQUITY") return `/equity/${symbol}`;
+    if (type === "ETF") return `/etf/${symbol}`;
+    return `/fno/${symbol}`;
+  };
+
+  const toggleWatch = (e: React.MouseEvent, symbol: string) => {
+    e.stopPropagation();
     const freshUser = getUserById(user.id);
     if (!freshUser) return;
     const wl = freshUser.watchlist || [];
@@ -69,46 +78,65 @@ export default function WatchlistPage() {
     const cur = prices[symbol] || base;
     const chg = cur - base;
     const chgPct = (chg / base) * 100;
+    const detailTo = getDetailPath(type, symbol) as never;
     return (
-      <div className="flex items-center justify-between py-2.5 border-b border-border last:border-0">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-sm">{symbol}</span>
-            <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-              {type}
-            </span>
-          </div>
-          <div className="text-xs text-muted-foreground truncate">{name}</div>
-        </div>
-        <div className="flex items-center gap-3 ml-2">
-          <div className="text-right">
-            <div className="text-sm font-semibold">{fmt(cur)}</div>
-            <div
-              className={`text-xs flex items-center gap-0.5 justify-end ${chg >= 0 ? "text-green-400" : "text-red-400"}`}
-            >
-              {chg >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-              {chg >= 0 ? "+" : ""}
-              {chgPct.toFixed(2)}%
+      <div className="flex items-center border-b border-border last:border-0">
+        {/* Clickable area navigates to detail page */}
+        <button
+          type="button"
+          className="flex-1 min-w-0 flex items-center justify-between py-2.5 hover:bg-muted/30 transition-colors rounded-lg px-1 -mx-1 text-left"
+          onClick={() => navigate({ to: detailTo })}
+        >
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-sm">{symbol}</span>
+              <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                {type}
+              </span>
             </div>
+            <div className="text-xs text-muted-foreground truncate">{name}</div>
           </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => toggleWatch(symbol)}
-            className={
-              watched
-                ? "text-yellow-400 hover:text-yellow-300"
-                : "text-muted-foreground hover:text-yellow-400"
-            }
-            title={watched ? "Remove from watchlist" : "Add to watchlist"}
-          >
-            {watched ? (
-              <Star size={16} fill="currentColor" />
-            ) : (
-              <StarOff size={16} />
-            )}
-          </Button>
-        </div>
+          <div className="flex items-center gap-2 ml-2">
+            <div className="text-right">
+              <div className="text-sm font-semibold">{fmt(cur)}</div>
+              <div
+                className={`text-xs flex items-center gap-0.5 justify-end ${
+                  chg >= 0 ? "text-green-400" : "text-red-400"
+                }`}
+              >
+                {chg >= 0 ? (
+                  <TrendingUp size={10} />
+                ) : (
+                  <TrendingDown size={10} />
+                )}
+                {chg >= 0 ? "+" : ""}
+                {chgPct.toFixed(2)}%
+              </div>
+            </div>
+            <ChevronRight
+              size={14}
+              className="text-muted-foreground flex-shrink-0"
+            />
+          </div>
+        </button>
+        {/* Star button — separate from nav button */}
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={(e) => toggleWatch(e, symbol)}
+          className={
+            watched
+              ? "text-yellow-400 hover:text-yellow-300 ml-1"
+              : "text-muted-foreground hover:text-yellow-400 ml-1"
+          }
+          title={watched ? "Remove from watchlist" : "Add to watchlist"}
+        >
+          {watched ? (
+            <Star size={16} fill="currentColor" />
+          ) : (
+            <StarOff size={16} />
+          )}
+        </Button>
       </div>
     );
   };
@@ -125,7 +153,6 @@ export default function WatchlistPage() {
 
   const watchedAssets = ASSETS.filter((a) => watchlist.includes(a.symbol));
 
-  // When searching, show global results across all types
   const globalSearchResults = q
     ? ASSETS.filter(
         (a) =>
