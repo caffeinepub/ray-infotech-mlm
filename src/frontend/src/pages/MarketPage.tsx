@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "@tanstack/react-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { ASSETS, getSimulatedPrices, isMarketOpen } from "../lib/assets";
 
@@ -9,15 +9,25 @@ function TradingViewWidget({
   symbol,
   height = 400,
 }: { symbol: string; height?: number }) {
-  const containerId = `tv_${symbol.replace(/[^a-z0-9]/gi, "_")}`;
+  const containerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
+    if (!containerRef.current) return;
+    containerRef.current.innerHTML = "";
+    const widgetDiv = document.createElement("div");
+    widgetDiv.className = "tradingview-widget-container__widget";
+    widgetDiv.style.height = "100%";
+    widgetDiv.style.width = "100%";
+    containerRef.current.appendChild(widgetDiv);
+
     const script = document.createElement("script");
+    script.type = "text/javascript";
     script.src =
       "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
     script.async = true;
-    script.innerHTML = JSON.stringify({
+    script.innerText = JSON.stringify({
       autosize: true,
-      symbol: symbol,
+      symbol,
       interval: "D",
       timezone: "Asia/Kolkata",
       theme: "dark",
@@ -27,44 +37,45 @@ function TradingViewWidget({
       calendar: false,
       support_host: "https://www.tradingview.com",
     });
-    const container = document.getElementById(containerId);
-    if (container) container.appendChild(script);
+    containerRef.current.appendChild(script);
+
     return () => {
-      if (container) container.innerHTML = "";
+      if (containerRef.current) containerRef.current.innerHTML = "";
     };
-  }, [symbol, containerId]);
+  }, [symbol]);
 
   return (
     <div
+      ref={containerRef}
       className="tradingview-widget-container"
-      style={{ height }}
-      id={containerId}
-    >
-      <div
-        className="tradingview-widget-container__widget"
-        style={{ height: "100%" }}
-      />
-    </div>
+      style={{ height, width: "100%" }}
+    />
   );
 }
 
 function TickerTape() {
+  const containerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    const container = document.getElementById("tv_ticker");
-    if (!container) return;
+    if (!containerRef.current) return;
+    containerRef.current.innerHTML = "";
     const script = document.createElement("script");
+    script.type = "text/javascript";
     script.src =
       "https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js";
     script.async = true;
-    script.innerHTML = JSON.stringify({
+    script.innerText = JSON.stringify({
       symbols: [
         { proName: "BSE:SENSEX", title: "SENSEX" },
         { proName: "NSE:NIFTY50", title: "NIFTY 50" },
         { proName: "NSE:BANKNIFTY", title: "BANK NIFTY" },
+        { proName: "NSE:NIFTYMIDCAP100", title: "MIDCAP 100" },
         { proName: "NSE:RELIANCE", title: "RELIANCE" },
         { proName: "NSE:TCS", title: "TCS" },
         { proName: "NSE:INFY", title: "INFOSYS" },
         { proName: "NSE:HDFCBANK", title: "HDFC BANK" },
+        { proName: "NSE:ICICIBANK", title: "ICICI BANK" },
+        { proName: "NSE:SBIN", title: "SBI" },
       ],
       showSymbolLogo: true,
       isTransparent: true,
@@ -72,20 +83,41 @@ function TickerTape() {
       colorTheme: "dark",
       locale: "en",
     });
-    container.appendChild(script);
+    containerRef.current.appendChild(script);
     return () => {
-      container.innerHTML = "";
+      if (containerRef.current) containerRef.current.innerHTML = "";
     };
   }, []);
-  return <div id="tv_ticker" className="tradingview-widget-container h-12" />;
+
+  return (
+    <div
+      ref={containerRef}
+      className="tradingview-widget-container"
+      style={{ height: 48 }}
+    />
+  );
 }
+
+const INDEX_DATA = [
+  { symbol: "SENSEX", name: "BSE SENSEX", base: 72845 },
+  { symbol: "NIFTY50", name: "NIFTY 50", base: 22100 },
+  { symbol: "BANKNIFTY", name: "BANK NIFTY", base: 47250 },
+  { symbol: "MIDCAP", name: "NIFTY MIDCAP 100", base: 51200 },
+];
 
 export default function MarketPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [prices, setPrices] = useState<Record<string, number>>(
+  const [prices, setPrices] = useState<Record<string, number>>(() =>
     getSimulatedPrices(),
   );
+  const [indexPrices, setIndexPrices] = useState<Record<string, number>>(() => {
+    const init: Record<string, number> = {};
+    for (const i of INDEX_DATA) {
+      init[i.symbol] = i.base;
+    }
+    return init;
+  });
   const marketOpen = isMarketOpen();
 
   useEffect(() => {
@@ -93,7 +125,17 @@ export default function MarketPage() {
       navigate({ to: "/login" });
       return;
     }
-    const interval = setInterval(() => setPrices(getSimulatedPrices()), 5000);
+    const interval = setInterval(() => {
+      setPrices(getSimulatedPrices());
+      setIndexPrices((prev) => {
+        const next = { ...prev };
+        for (const idx of INDEX_DATA) {
+          const chg = next[idx.symbol] * (Math.random() * 0.004 - 0.002);
+          next[idx.symbol] = Math.max(1, +(next[idx.symbol] + chg).toFixed(2));
+        }
+        return next;
+      });
+    }, 3000);
     return () => clearInterval(interval);
   }, [user, navigate]);
 
@@ -105,6 +147,29 @@ export default function MarketPage() {
 
   const fmt = (n: number) =>
     `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+
+  const IndexCard = ({
+    symbol,
+    name,
+    base,
+  }: { symbol: string; name: string; base: number }) => {
+    const cur = indexPrices[symbol] || base;
+    const chg = cur - base;
+    const chgPct = (chg / base) * 100;
+    return (
+      <Card className="bg-card border border-gold-500/20">
+        <CardContent className="p-3">
+          <div className="text-xs text-muted-foreground mb-1">{name}</div>
+          <div className="text-lg font-bold">{fmt(cur)}</div>
+          <div
+            className={`text-xs font-semibold ${chg >= 0 ? "text-green-400" : "text-red-400"}`}
+          >
+            {chg >= 0 ? "▲" : "▼"} {Math.abs(chgPct).toFixed(2)}%
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 
   const PriceRow = ({
     symbol,
@@ -135,11 +200,15 @@ export default function MarketPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
-      {/* Session Status */}
+      {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <h1 className="text-xl font-bold">Market Overview</h1>
         <div
-          className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${marketOpen ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400"}`}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+            marketOpen
+              ? "bg-green-500/15 text-green-400"
+              : "bg-red-500/15 text-red-400"
+          }`}
         >
           <div
             className={`w-2 h-2 rounded-full ${marketOpen ? "bg-green-400 animate-pulse" : "bg-red-400"}`}
@@ -148,8 +217,20 @@ export default function MarketPage() {
         </div>
       </div>
 
+      {/* Live Index Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        {INDEX_DATA.map((idx) => (
+          <IndexCard
+            key={idx.symbol}
+            symbol={idx.symbol}
+            name={idx.name}
+            base={idx.base}
+          />
+        ))}
+      </div>
+
       {/* Ticker Tape */}
-      <div className="bg-navy-900 rounded-xl mb-4 overflow-hidden">
+      <div className="bg-navy-900 rounded-xl mb-4 overflow-hidden border border-gold-500/10">
         <TickerTape />
       </div>
 
@@ -179,12 +260,12 @@ export default function MarketPage() {
                 ETFs
               </TabsTrigger>
               <TabsTrigger value="fno" className="flex-1 text-xs">
-                F&O
+                F&amp;O
               </TabsTrigger>
             </TabsList>
             <TabsContent value="equity">
               <Card>
-                <CardContent className="p-3">
+                <CardContent className="p-3 max-h-[400px] overflow-y-auto">
                   {equities.map((a) => (
                     <PriceRow
                       key={a.symbol}

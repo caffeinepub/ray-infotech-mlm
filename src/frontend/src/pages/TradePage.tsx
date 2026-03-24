@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "@tanstack/react-router";
-import React, { useEffect, useState } from "react";
+import { Search, Star, StarOff, X } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "../hooks/useAuth";
 import { ASSETS, getSimulatedPrices, isMarketOpen } from "../lib/assets";
@@ -21,7 +22,9 @@ export default function TradePage() {
   const [selected, setSelected] = useState<Asset | null>(null);
   const [qty, setQty] = useState("1");
   const [orderType, setOrderType] = useState<"BUY" | "SELL">("BUY");
+  const [search, setSearch] = useState("");
   const marketOpen = isMarketOpen();
+  const orderPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!user) {
@@ -36,8 +39,52 @@ export default function TradePage() {
 
   const isApproved =
     user.paymentStatus === "approved" && user.kycStatus === "approved";
+  const watchlist = user.watchlist || [];
   const fmt = (n: number) =>
-    `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+    `\u20b9${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+
+  const toggleWatch = (symbol: string) => {
+    const freshUser = getUserById(user.id);
+    if (!freshUser) return;
+    const wl = freshUser.watchlist || [];
+    const isWatched = wl.includes(symbol);
+    freshUser.watchlist = isWatched
+      ? wl.filter((s) => s !== symbol)
+      : [...wl, symbol];
+    updateUser(freshUser);
+    refresh();
+    toast.success(isWatched ? "Removed from watchlist" : "Added to watchlist");
+  };
+
+  const q = search.toLowerCase().trim();
+
+  const filterAssets = (assets: Asset[]) => {
+    if (!q) return assets;
+    return assets.filter(
+      (a) =>
+        a.symbol.toLowerCase().includes(q) || a.name.toLowerCase().includes(q),
+    );
+  };
+
+  // Global search across all asset types when query is present
+  const globalSearchResults = q
+    ? ASSETS.filter(
+        (a) =>
+          a.symbol.toLowerCase().includes(q) ||
+          a.name.toLowerCase().includes(q),
+      )
+    : [];
+
+  const handleSelectAndOrder = (asset: Asset, type: "BUY" | "SELL") => {
+    setSelected(asset);
+    setOrderType(type);
+    setTimeout(() => {
+      orderPanelRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 50);
+  };
 
   const handleTrade = () => {
     if (!selected) {
@@ -96,57 +143,125 @@ export default function TradePage() {
     setQty("1");
   };
 
-  const AssetList = ({ assets }: { assets: Asset[] }) => (
-    <div className="space-y-1">
-      {assets.map((a) => {
-        const cur = prices[a.symbol] || a.basePrice;
-        const chg = ((cur - a.basePrice) / a.basePrice) * 100;
-        return (
+  const AssetRow = ({ a, idx }: { a: Asset; idx: number }) => {
+    const cur = prices[a.symbol] || a.basePrice;
+    const chg = ((cur - a.basePrice) / a.basePrice) * 100;
+    const isSelected = selected?.symbol === a.symbol;
+    const watched = watchlist.includes(a.symbol);
+    return (
+      <div
+        key={a.symbol}
+        data-ocid={`trade.item.${idx + 1}`}
+        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${
+          isSelected
+            ? "bg-yellow-500/20 border border-yellow-500/40"
+            : "hover:bg-muted/50"
+        }`}
+      >
+        <button
+          type="button"
+          onClick={() => setSelected(a)}
+          className="flex-1 text-left min-w-0"
+        >
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold text-sm">{a.symbol}</span>
+            {q && (
+              <span className="text-xs px-1 py-0.5 rounded bg-muted text-muted-foreground">
+                {a.type}
+              </span>
+            )}
+          </div>
+          <div className="text-xs text-muted-foreground truncate">{a.name}</div>
+        </button>
+        <div className="flex items-center gap-1.5 ml-1">
+          <div className="text-right mr-1">
+            <div className="text-sm font-semibold">{fmt(cur)}</div>
+            <div
+              className={`text-xs ${
+                chg >= 0 ? "text-green-400" : "text-red-400"
+              }`}
+            >
+              {chg >= 0 ? "+" : ""}
+              {chg.toFixed(2)}%
+            </div>
+          </div>
           <button
-            key={a.symbol}
             type="button"
-            onClick={() => setSelected(a)}
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors text-left ${
-              selected?.symbol === a.symbol
-                ? "bg-gold-500/20 border border-gold-500/40"
-                : "hover:bg-muted/50"
+            onClick={() => toggleWatch(a.symbol)}
+            className={`p-1 rounded transition-colors ${
+              watched
+                ? "text-yellow-400 hover:text-yellow-300"
+                : "text-muted-foreground hover:text-yellow-400"
             }`}
+            title={watched ? "Remove from watchlist" : "Add to watchlist"}
           >
-            <div>
-              <div className="font-semibold text-sm">{a.symbol}</div>
-              <div className="text-xs text-muted-foreground">{a.name}</div>
-            </div>
-            <div className="text-right">
-              <div className="text-sm font-semibold">{fmt(cur)}</div>
-              <div
-                className={`text-xs ${chg >= 0 ? "text-green-400" : "text-red-400"}`}
-              >
-                {chg >= 0 ? "+" : ""}
-                {chg.toFixed(2)}%
-              </div>
-            </div>
+            {watched ? (
+              <Star size={13} fill="currentColor" />
+            ) : (
+              <StarOff size={13} />
+            )}
           </button>
-        );
-      })}
-    </div>
-  );
+          <button
+            type="button"
+            data-ocid={`trade.buy.button.${idx + 1}`}
+            onClick={() => handleSelectAndOrder(a, "BUY")}
+            className="px-2 py-1 rounded text-xs font-bold bg-green-600 hover:bg-green-500 text-white transition-colors"
+          >
+            BUY
+          </button>
+          <button
+            type="button"
+            data-ocid={`trade.sell.button.${idx + 1}`}
+            onClick={() => handleSelectAndOrder(a, "SELL")}
+            className="px-2 py-1 rounded text-xs font-bold bg-red-600 hover:bg-red-500 text-white transition-colors"
+          >
+            SELL
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const AssetList = ({ assets }: { assets: Asset[] }) => {
+    const filtered = filterAssets(assets);
+    if (filtered.length === 0) {
+      return (
+        <div className="py-8 text-center text-sm text-muted-foreground">
+          No results found for &ldquo;{search}&rdquo;
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-1">
+        {filtered.map((a, idx) => (
+          <AssetRow key={a.symbol} a={a} idx={idx} />
+        ))}
+      </div>
+    );
+  };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6">
+    <div className="max-w-5xl mx-auto px-4 py-6 pb-40 lg:pb-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold">Trade</h1>
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">
             Balance:{" "}
-            <span className="text-gold-400 font-bold">
+            <span className="text-yellow-400 font-bold">
               {fmt(user.virtualBalance)}
             </span>
           </span>
           <div
-            className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${marketOpen ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400"}`}
+            className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
+              marketOpen
+                ? "bg-green-500/15 text-green-400"
+                : "bg-red-500/15 text-red-400"
+            }`}
           >
             <div
-              className={`w-1.5 h-1.5 rounded-full ${marketOpen ? "bg-green-400 animate-pulse" : "bg-red-400"}`}
+              className={`w-1.5 h-1.5 rounded-full ${
+                marketOpen ? "bg-green-400 animate-pulse" : "bg-red-400"
+              }`}
             />
             {marketOpen ? "OPEN" : "CLOSED"}
           </div>
@@ -160,49 +275,109 @@ export default function TradePage() {
         </div>
       )}
 
+      {/* Search Bar */}
+      <div className="relative mb-4" data-ocid="trade.search_input">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search any share — Equities, ETFs, F&O..."
+          className="pl-9 pr-9"
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
       <div className="grid lg:grid-cols-5 gap-4">
         {/* Asset List */}
         <div className="lg:col-span-3">
-          <Tabs defaultValue="equity">
-            <TabsList className="w-full mb-3">
-              <TabsTrigger value="equity" className="flex-1">
-                Equities
-              </TabsTrigger>
-              <TabsTrigger value="etf" className="flex-1">
-                ETFs
-              </TabsTrigger>
-              <TabsTrigger value="fno" className="flex-1">
-                F&O
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="equity">
-              <Card>
-                <CardContent className="p-3">
-                  <AssetList
-                    assets={ASSETS.filter((a) => a.type === "EQUITY")}
-                  />
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="etf">
-              <Card>
-                <CardContent className="p-3">
-                  <AssetList assets={ASSETS.filter((a) => a.type === "ETF")} />
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="fno">
-              <Card>
-                <CardContent className="p-3">
-                  <AssetList assets={ASSETS.filter((a) => a.type === "FNO")} />
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+          {/* Global search results across all types */}
+          {q ? (
+            <Card>
+              <CardContent className="p-3">
+                <div className="text-xs text-muted-foreground mb-2 px-1">
+                  {globalSearchResults.length} result
+                  {globalSearchResults.length !== 1 ? "s" : ""} across all
+                  categories
+                </div>
+                {globalSearchResults.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground">
+                    No shares found for &ldquo;{search}&rdquo;
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {globalSearchResults.map((a, idx) => (
+                      <AssetRow key={a.symbol} a={a} idx={idx} />
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <Tabs defaultValue="equity">
+              <TabsList className="w-full mb-3">
+                <TabsTrigger
+                  value="equity"
+                  className="flex-1"
+                  data-ocid="trade.equity.tab"
+                >
+                  Equities
+                </TabsTrigger>
+                <TabsTrigger
+                  value="etf"
+                  className="flex-1"
+                  data-ocid="trade.etf.tab"
+                >
+                  ETFs
+                </TabsTrigger>
+                <TabsTrigger
+                  value="fno"
+                  className="flex-1"
+                  data-ocid="trade.fno.tab"
+                >
+                  F&amp;O
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="equity">
+                <Card>
+                  <CardContent className="p-3">
+                    <AssetList
+                      assets={ASSETS.filter((a) => a.type === "EQUITY")}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              <TabsContent value="etf">
+                <Card>
+                  <CardContent className="p-3">
+                    <AssetList
+                      assets={ASSETS.filter((a) => a.type === "ETF")}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              <TabsContent value="fno">
+                <Card>
+                  <CardContent className="p-3">
+                    <AssetList
+                      assets={ASSETS.filter((a) => a.type === "FNO")}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          )}
         </div>
 
-        {/* Order Panel */}
-        <div className="lg:col-span-2">
+        {/* Order Panel - desktop only */}
+        <div className="hidden lg:block lg:col-span-2" ref={orderPanelRef}>
           <Card className="sticky top-20">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">
@@ -217,8 +392,30 @@ export default function TradePage() {
             <CardContent className="space-y-4">
               {selected && (
                 <div className="bg-muted/50 rounded-lg p-3">
-                  <div className="text-xs text-muted-foreground">
-                    {selected.name}
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs text-muted-foreground">
+                      {selected.name}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleWatch(selected.symbol)}
+                      className={`p-1 rounded transition-colors ${
+                        watchlist.includes(selected.symbol)
+                          ? "text-yellow-400 hover:text-yellow-300"
+                          : "text-muted-foreground hover:text-yellow-400"
+                      }`}
+                      title={
+                        watchlist.includes(selected.symbol)
+                          ? "Remove from watchlist"
+                          : "Add to watchlist"
+                      }
+                    >
+                      {watchlist.includes(selected.symbol) ? (
+                        <Star size={15} fill="currentColor" />
+                      ) : (
+                        <StarOff size={15} />
+                      )}
+                    </button>
                   </div>
                   <div className="text-2xl font-bold">
                     {fmt(prices[selected.symbol] || selected.basePrice)}
@@ -236,6 +433,7 @@ export default function TradePage() {
 
               <div className="grid grid-cols-2 gap-2">
                 <Button
+                  data-ocid="trade.buy.primary_button"
                   variant={orderType === "BUY" ? "default" : "outline"}
                   className={
                     orderType === "BUY"
@@ -247,6 +445,7 @@ export default function TradePage() {
                   BUY
                 </Button>
                 <Button
+                  data-ocid="trade.sell.primary_button"
                   variant={orderType === "SELL" ? "default" : "outline"}
                   className={
                     orderType === "SELL"
@@ -262,6 +461,7 @@ export default function TradePage() {
               <div>
                 <Label>Quantity</Label>
                 <Input
+                  data-ocid="trade.qty.input"
                   type="number"
                   min="1"
                   value={qty}
@@ -283,7 +483,12 @@ export default function TradePage() {
               )}
 
               <Button
-                className={`w-full font-semibold ${orderType === "BUY" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"} text-white`}
+                data-ocid="trade.order.submit_button"
+                className={`w-full font-semibold ${
+                  orderType === "BUY"
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-red-600 hover:bg-red-700"
+                } text-white`}
                 onClick={handleTrade}
                 disabled={!selected || !isApproved}
               >
@@ -293,6 +498,126 @@ export default function TradePage() {
           </Card>
         </div>
       </div>
+
+      {/* Mobile sticky bottom order panel */}
+      {selected && (
+        <div
+          className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border rounded-t-2xl shadow-2xl p-4"
+          data-ocid="trade.order.panel"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-base">{selected.symbol}</span>
+                <button
+                  type="button"
+                  onClick={() => toggleWatch(selected.symbol)}
+                  className={`transition-colors ${
+                    watchlist.includes(selected.symbol)
+                      ? "text-yellow-400"
+                      : "text-muted-foreground hover:text-yellow-400"
+                  }`}
+                >
+                  {watchlist.includes(selected.symbol) ? (
+                    <Star size={14} fill="currentColor" />
+                  ) : (
+                    <StarOff size={14} />
+                  )}
+                </button>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {selected.name}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-lg font-bold">
+                {fmt(prices[selected.symbol] || selected.basePrice)}
+              </div>
+              {selected.type === "FNO" && (
+                <div className="text-xs text-muted-foreground">
+                  Lot: {selected.lotSize}
+                </div>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelected(null)}
+              className="ml-3 text-muted-foreground hover:text-foreground"
+              data-ocid="trade.order.close_button"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <button
+              type="button"
+              data-ocid="trade.mobile.buy.toggle"
+              onClick={() => setOrderType("BUY")}
+              className={`py-2 rounded-lg text-sm font-bold transition-colors ${
+                orderType === "BUY"
+                  ? "bg-green-600 text-white"
+                  : "border border-green-600 text-green-500"
+              }`}
+            >
+              BUY
+            </button>
+            <button
+              type="button"
+              data-ocid="trade.mobile.sell.toggle"
+              onClick={() => setOrderType("SELL")}
+              className={`py-2 rounded-lg text-sm font-bold transition-colors ${
+                orderType === "SELL"
+                  ? "bg-red-600 text-white"
+                  : "border border-red-600 text-red-500"
+              }`}
+            >
+              SELL
+            </button>
+          </div>
+
+          <div className="flex gap-2">
+            <Input
+              data-ocid="trade.mobile.qty.input"
+              type="number"
+              min="1"
+              value={qty}
+              onChange={(e) => setQty(e.target.value)}
+              placeholder="Qty"
+              className="w-24"
+            />
+            {qty && (
+              <div className="flex items-center text-xs text-muted-foreground flex-1">
+                Total:{" "}
+                <span className="font-bold text-foreground ml-1">
+                  {fmt(
+                    (prices[selected.symbol] || selected.basePrice) *
+                      (Number.parseInt(qty) || 0),
+                  )}
+                </span>
+              </div>
+            )}
+            <Button
+              data-ocid="trade.mobile.order.submit_button"
+              onClick={handleTrade}
+              disabled={!isApproved}
+              className={`font-semibold ${
+                orderType === "BUY"
+                  ? "bg-green-600 hover:bg-green-700"
+                  : "bg-red-600 hover:bg-red-700"
+              } text-white`}
+            >
+              Place {orderType}
+            </Button>
+          </div>
+
+          {!isApproved && (
+            <p className="text-xs text-yellow-400 mt-2">
+              Account pending approval
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

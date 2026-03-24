@@ -235,11 +235,11 @@ export default function RegisterPage() {
           <form onSubmit={handleRegister} className="space-y-4">
             <div className="text-center">
               <p className="text-sm font-semibold mb-3">
-                Pay \u20b91 via UPI to complete registration
+                Pay ₹1 via UPI to complete registration
               </p>
               <div className="inline-block border-2 border-gold-500/40 rounded-xl p-2 bg-white">
                 <img
-                  src="/assets/uploads/c4e00e11-2c6c-4637-966f-6cd09caf74db_image-1.png"
+                  src="/assets/c4e00e11-2c6c-4637-966f-6cd09caf74db_image.png"
                   alt="UPI QR Code"
                   className="w-48 h-48 object-contain"
                 />
@@ -247,7 +247,7 @@ export default function RegisterPage() {
               <p className="text-xs text-muted-foreground mt-2">
                 UPI ID: 6370815283@okbizaxis
                 <br />
-                RAY INFOTECH | Amount: \u20b91
+                RAY INFOTECH | Amount: ₹1
               </p>
             </div>
 
