@@ -9,7 +9,6 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   ChevronDown,
   ChevronUp,
-  ExternalLink,
   Search,
   Star,
   StarOff,
@@ -237,7 +236,7 @@ function ChargesBreakdown({
   );
 }
 
-// ─── Order Panel Content ──────────────────────────────────────────────────────
+// ─── Order Panel Content (reused for desktop + mobile) ───────────────────────
 
 function OrderPanelContent({
   selected,
@@ -420,6 +419,7 @@ function OrderPanelContent({
         />
       </div>
 
+      {/* Limit price for LIMIT order */}
       {orderVariant === "LIMIT" && (
         <div>
           <Label className="text-xs mb-1 block">Limit Price (₹)</Label>
@@ -434,6 +434,7 @@ function OrderPanelContent({
         </div>
       )}
 
+      {/* Trigger price for SL */}
       {orderVariant === "SL" && (
         <div>
           <Label className="text-xs mb-1 block">Trigger Price (₹)</Label>
@@ -453,6 +454,7 @@ function OrderPanelContent({
         </div>
       )}
 
+      {/* GTT inputs */}
       {orderVariant === "GTT" && (
         <div className="space-y-2">
           <div>
@@ -480,6 +482,7 @@ function OrderPanelContent({
         </div>
       )}
 
+      {/* Charges */}
       {liveCharges && orderVariant !== "GTT" && (
         <ChargesBreakdown
           charges={liveCharges}
@@ -496,6 +499,7 @@ function OrderPanelContent({
         </div>
       )}
 
+      {/* Submit button */}
       <Button
         data-ocid={
           isMobile
@@ -610,8 +614,9 @@ function GTTOrdersPanel({
 export default function TradePage() {
   const navigate = useNavigate();
   const { user, refresh } = useAuth();
-  const [prices, setPrices] =
-    useState<Record<string, number>>(getSimulatedPrices);
+  const [prices, setPrices] = useState<Record<string, number>>(
+    getSimulatedPrices(),
+  );
   const [selected, setSelected] = useState<Asset | null>(null);
   const [qty, setQty] = useState("1");
   const [orderType, setOrderType] = useState<"BUY" | "SELL">("BUY");
@@ -623,22 +628,6 @@ export default function TradePage() {
   const [search, setSearch] = useState("");
   const marketOpen = isMarketOpen();
   const orderPanelRef = useRef<HTMLDivElement>(null);
-
-  // Handle pre-selected symbol from equity detail page query params
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const sym = params.get("symbol");
-    const action = params.get("action");
-    if (sym) {
-      const asset = ASSETS.find((a) => a.symbol === sym.toUpperCase());
-      if (asset) {
-        setSelected(asset);
-        if (action === "BUY" || action === "SELL") {
-          setOrderType(action);
-        }
-      }
-    }
-  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -717,6 +706,7 @@ export default function TradePage() {
     const tradeValue = price * quantity;
     const isIntraday = orderMode === "INTRADAY";
 
+    // GTT: store and exit
     if (orderVariant === "GTT") {
       const tp = Number.parseFloat(triggerPrice);
       const lp = Number.parseFloat(gttLimitPrice);
@@ -746,6 +736,7 @@ export default function TradePage() {
       return;
     }
 
+    // LIMIT: check price condition
     if (orderVariant === "LIMIT") {
       const lp = Number.parseFloat(limitPrice);
       if (!lp) {
@@ -754,6 +745,7 @@ export default function TradePage() {
       }
       const conditionMet = orderType === "BUY" ? price <= lp : price >= lp;
       if (!conditionMet) {
+        // Store as pending — don't deduct balance
         const pendingKey = `pending_orders_${user.id}`;
         const pending = JSON.parse(localStorage.getItem(pendingKey) || "[]");
         pending.push({
@@ -780,6 +772,7 @@ export default function TradePage() {
       quantity,
     );
 
+    // SL: show note but execute at market
     const freshUser = getUserById(user.id);
     if (!freshUser) return;
 
@@ -823,15 +816,14 @@ export default function TradePage() {
     const slNote =
       orderVariant === "SL" && triggerPrice ? ` [SL @ ₹${triggerPrice}]` : "";
     toast.success(
-      `${orderType} order placed${slNote}: ${quantity} × ${selected.symbol} @ ${fmt(price)} | Net ${
-        orderType === "BUY" ? "paid" : "received"
-      }: ${fmtFull(charges.netAmount)} (charges: ${fmtFull(charges.totalCharges)})`,
+      `${orderType} order placed${slNote}: ${quantity} × ${selected.symbol} @ ${fmt(price)} | Net ${orderType === "BUY" ? "paid" : "received"}: ${fmtFull(charges.netAmount)} (charges: ${fmtFull(charges.totalCharges)})`,
     );
     setQty("1");
     setTriggerPrice("");
     setLimitPrice("");
   };
 
+  // Compute live charges for the current selection
   const liveCharges: Charges | null = (() => {
     if (!selected || !qty) return null;
     const quantity = Number.parseInt(qty) || 0;
@@ -886,41 +878,21 @@ export default function TradePage() {
             : "hover:bg-muted/50"
         }`}
       >
-        <div className="flex-1 text-left min-w-0">
+        <button
+          type="button"
+          onClick={() => setSelected(a)}
+          className="flex-1 text-left min-w-0"
+        >
           <div className="flex items-center gap-1.5">
-            {a.type === "EQUITY" || a.type === "ETF" || a.type === "FNO" ? (
-              <button
-                type="button"
-                data-ocid={`trade.item.${idx + 1}.link`}
-                className="font-semibold text-sm hover:text-primary hover:underline transition-colors flex items-center gap-1"
-                onClick={() => {
-                  if (a.type === "ETF") navigate({ to: `/etf/${a.symbol}` });
-                  else if (a.type === "FNO")
-                    navigate({ to: `/fno/${a.symbol}` });
-                  else navigate({ to: `/equity/${a.symbol}` });
-                }}
-                title={`View ${a.symbol} details`}
-              >
-                {a.symbol}
-                <ExternalLink className="w-3 h-3 opacity-50" />
-              </button>
-            ) : (
-              <span className="font-semibold text-sm">{a.symbol}</span>
-            )}
+            <span className="font-semibold text-sm">{a.symbol}</span>
             {q && (
               <span className="text-xs px-1 py-0.5 rounded bg-muted text-muted-foreground">
                 {a.type}
               </span>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => setSelected(a)}
-            className="text-xs text-muted-foreground truncate block text-left hover:text-foreground transition-colors"
-          >
-            {a.name}
-          </button>
-        </div>
+          <div className="text-xs text-muted-foreground truncate">{a.name}</div>
+        </button>
         <div className="flex items-center gap-1.5 ml-1">
           <div className="text-right mr-1">
             <div className="text-sm font-semibold">{fmt(cur)}</div>
@@ -1122,6 +1094,7 @@ export default function TradePage() {
             </Tabs>
           )}
 
+          {/* GTT Orders panel below asset list on desktop */}
           <GTTOrdersPanel userId={user.id} fmt={fmt} />
         </div>
 

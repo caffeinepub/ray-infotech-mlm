@@ -15,9 +15,6 @@ import { AuthProvider } from "./hooks/useAuth";
 import AdminPanel from "./pages/AdminPanel";
 import ChatbotPage from "./pages/ChatbotPage";
 import DashboardPage from "./pages/DashboardPage";
-import ETFDetailPage from "./pages/ETFDetailPage";
-import EquityDetailPage from "./pages/EquityDetailPage";
-import FNODetailPage from "./pages/FNODetailPage";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import MarketPage from "./pages/MarketPage";
@@ -90,21 +87,6 @@ const adminRoute = createRoute({
   path: "/admin",
   component: AdminPanel,
 });
-const equityDetailRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/equity/$symbol",
-  component: EquityDetailPage,
-});
-const etfDetailRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/etf/$symbol",
-  component: ETFDetailPage,
-});
-const fnoDetailRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/fno/$symbol",
-  component: FNODetailPage,
-});
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -117,9 +99,6 @@ const routeTree = rootRoute.addChildren([
   watchlistRoute,
   chatbotRoute,
   adminRoute,
-  equityDetailRoute,
-  etfDetailRoute,
-  fnoDetailRoute,
 ]);
 
 const router = createRouter({ routeTree });
