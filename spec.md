@@ -1,11 +1,29 @@
-# Specification
+# RAY INFOTECH Demo Trading - Admin Dashboard
 
-## Summary
-**Goal:** Recover and correctly display member data after deployment issues by fixing backend stable storage preservation and adding a frontend recovery status banner.
+## Current State
+The project has an MLM-based backend with member registration, admin controls, and commission calculations. An AdminPanel page exists but is tied to MLM member management.
 
-**Planned changes:**
-- Audit and fix the backend `getAllMembers` (or equivalent) function to ensure it reads and returns all stored member records from stable storage without being cleared or overwritten by initialization/postupgrade logic.
-- Add a data recovery status banner at the top of the members section in `AdminPanel.tsx` that shows the count of members loaded from the backend.
-- When the members list is empty, display a prominent warning message with a "Reload Members" button that re-fetches members from the backend.
+## Requested Changes (Diff)
 
-**User-visible outcome:** Admins will see the correct number of members displayed in the panel after deployment, and if no members are found, a warning banner with a reload button will allow them to re-fetch the data immediately.
+### Add
+- Admin dashboard page for the stock market demo trading platform
+- Stats cards: total members, pending KYC approvals, pending payment approvals, active traders
+- Members table: name, member ID, KYC status, payment status, virtual balance, joined date, actions
+- KYC approval workflow: view submitted Aadhaar/PAN details, approve or reject
+- Payment approval workflow: view uploaded payment proof screenshots, approve or reject
+- Member management: suspend/debar member, delete member, add member manually
+- Navigation sidebar with sections: Overview, Members, KYC Approvals, Payment Approvals, Portfolios
+
+### Modify
+- AdminPanel page to render the new trading admin dashboard UI
+
+### Remove
+- Old MLM-specific admin panel UI
+
+## Implementation Plan
+1. Redesign AdminPanel page with a sidebar layout
+2. Build Overview tab with stat cards (total members, pending KYC, pending payments, active traders)
+3. Build Members tab with searchable table showing all members and management actions
+4. Build KYC Approvals tab with submitted document details and approve/reject actions
+5. Build Payment Approvals tab with proof uploads and approve/reject workflow
+6. Use mock/local state for now since backend trading models aren't yet created
