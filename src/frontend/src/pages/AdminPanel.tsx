@@ -1423,26 +1423,33 @@ function AdminLoginForm() {
 
 export default function AdminPanel() {
   const { isAdmin } = useAuth();
-  const [users, setUsers] = useState<User[]>(() => getUsers());
-  const [_loadingUsers, setLoadingUsers] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
   const reload = useCallback(async () => {
     setLoadingUsers(true);
     try {
       const all = await backendGetAllUsers();
       setUsers(all);
+      setBackendError(false);
     } catch {
-      setUsers(getUsers());
+      const local = getUsers();
+      setUsers(local);
+      if (local.length === 0) setBackendError(true);
     } finally {
       setLoadingUsers(false);
     }
   }, []);
 
+  const [backendError, setBackendError] = useState(false);
+
   useEffect(() => {
+    if (!isAdmin) return;
+    setBackendError(false);
     reload();
-    const interval = setInterval(reload, 10000);
+    const interval = setInterval(reload, 15000);
     return () => clearInterval(interval);
-  }, [reload]);
+  }, [reload, isAdmin]);
 
   if (!isAdmin) return <AdminLoginForm />;
 
@@ -1545,7 +1552,28 @@ export default function AdminPanel() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
-      <h1 className="text-xl font-bold mb-6">Admin Panel</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-xl font-bold">Admin Panel</h1>
+        <button
+          type="button"
+          data-ocid="admin.primary_button"
+          onClick={() => reload()}
+          disabled={loadingUsers}
+          className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw size={14} className={loadingUsers ? "animate-spin" : ""} />
+          {loadingUsers ? "Loading..." : "Refresh"}
+        </button>
+      </div>
+      {backendError && (
+        <div
+          data-ocid="admin.error_state"
+          className="mb-4 p-3 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 text-sm flex items-center gap-2"
+        >
+          <XCircle size={16} />
+          Could not load members from backend. Please refresh.
+        </div>
+      )}
 
       <Tabs defaultValue="overview">
         <TabsList className="mb-4 flex-wrap h-auto gap-1">

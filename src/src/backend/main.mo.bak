@@ -59,6 +59,110 @@ actor {
     userProfiles.get(user);
   };
 
+  // ─── Trading Platform User Management ────────────────────────────────────────
+
+  public type TradingUser = {
+    id : Text;           // RT-000001
+    name : Text;
+    email : Text;
+    phone : Text;
+    passwordHash : Text; // store password as-is for demo
+    aadhaar : Text;
+    pan : Text;
+    digilockerRef : Text;
+    paymentProof : Text; // base64 image
+    selfie : Text;       // base64 image (empty if not provided)
+    kycStatus : Text;    // "pending" | "approved" | "rejected"
+    paymentStatus : Text; // "pending" | "approved" | "rejected"
+    accountStatus : Text; // "active" | "debarred"
+    virtualBalance : Nat;
+    watchlist : [Text];
+    createdAt : Int;     // timestamp
+    referredBy : Text;   // member id or empty
+    referralBonus : Nat;
+    esignature : Text;   // base64 signature or empty
+    tcSigned : Bool;
+  };
+
+  let tradingUsers = Map.empty<Text, TradingUser>(); // keyed by email
+  var tradingUserCount = 0;
+
+  public shared func registerTradingUser(user : TradingUser) : async { ok : Bool; message : Text } {
+    // Check duplicate email
+    if (tradingUsers.containsKey(user.email)) {
+      return { ok = false; message = "Email already registered" };
+    };
+    tradingUsers.add(user.email, user);
+    tradingUserCount += 1;
+    { ok = true; message = "Registration successful" };
+  };
+
+  public query func getTradingUserByEmail(email : Text) : async ?TradingUser {
+    tradingUsers.get(email);
+  };
+
+  public query func getAllTradingUsers() : async [TradingUser] {
+    tradingUsers.values().toArray();
+  };
+
+  public shared func updateTradingUser(user : TradingUser) : async { ok : Bool } {
+    if (not tradingUsers.containsKey(user.email)) {
+      return { ok = false };
+    };
+    tradingUsers.add(user.email, user);
+    { ok = true };
+  };
+
+  public shared func updateTradingUserById(id : Text, kycStatus : Text, paymentStatus : Text, accountStatus : Text, virtualBalance : Nat) : async { ok : Bool } {
+    var found = false;
+    for ((email, u) in tradingUsers.entries()) {
+      if (u.id == id) {
+        let updated : TradingUser = {
+          u with
+          kycStatus;
+          paymentStatus;
+          accountStatus;
+          virtualBalance;
+        };
+        tradingUsers.add(email, updated);
+        found := true;
+      };
+    };
+    { ok = found };
+  };
+
+  public shared func creditTradingReferralBonus(referrerId : Text) : async { ok : Bool } {
+    // Find user by id
+    for ((email, u) in tradingUsers.entries()) {
+      if (u.id == referrerId) {
+        let updated : TradingUser = {
+          u with
+          virtualBalance = u.virtualBalance + 5;
+          referralBonus = u.referralBonus + 5;
+        };
+        tradingUsers.add(email, updated);
+        return { ok = true };
+      };
+    };
+    { ok = false };
+  };
+
+  public query func nextTradingMemberId() : async Text {
+    let num = tradingUserCount + 1;
+    let numText = Nat.toText(num);
+    let padded = switch (numText.size()) {
+      case 1 { "00000" # numText };
+      case 2 { "0000" # numText };
+      case 3 { "000" # numText };
+      case 4 { "00" # numText };
+      case 5 { "0" # numText };
+      case _ { numText };
+    };
+    "RT-" # padded;
+  };
+
+  // ─── MLM Platform ─────────────────────────────────────────────────────────────
+
   type MemberId = Nat;
   type TreeLevel = Nat;
   type MatrixPosition = Nat;
@@ -465,93 +569,5 @@ actor {
       );
     };
     calculateCommissionsInternal(joiningFee);
-  };
-
-  // ─── Trading Platform User Management ─────────────────────────────────────
-
-  public type TradingUser = {
-    id : Text;
-    name : Text;
-    email : Text;
-    phone : Text;
-    passwordHash : Text;
-    aadhaar : Text;
-    pan : Text;
-    digilockerRef : Text;
-    paymentProof : Text;
-    selfie : Text;
-    kycStatus : Text;
-    paymentStatus : Text;
-    accountStatus : Text;
-    virtualBalance : Nat;
-    watchlist : [Text];
-    createdAt : Int;
-    referredBy : ?Text;
-    referralBonus : Nat;
-    esignature : Text;
-    tcSigned : Bool;
-  };
-
-  public type TradingUserResult = { ok : Bool; message : Text };
-
-  stable var tradingUsers = Map.empty<Text, TradingUser>();
-  stable var tradingMemberCounter : Nat = 1;
-
-  public shared func registerTradingUser(user : TradingUser) : async TradingUserResult {
-    tradingUsers.add(user.id, user);
-    { ok = true; message = "" };
-  };
-
-  public query func getAllTradingUsers() : async [TradingUser] {
-    tradingUsers.values().toArray();
-  };
-
-  public query func getTradingUserByEmail(email : Text) : async ?TradingUser {
-    var found : ?TradingUser = null;
-    for (user in tradingUsers.values()) {
-      if (user.email == email) {
-        found := ?user;
-      };
-    };
-    found;
-  };
-
-  public shared func updateTradingUser(user : TradingUser) : async TradingUserResult {
-    if (tradingUsers.containsKey(user.id)) {
-      tradingUsers.add(user.id, user);
-      { ok = true; message = "" };
-    } else {
-      tradingUsers.add(user.id, user);
-      { ok = true; message = "" };
-    };
-  };
-
-  public query func nextTradingMemberId() : async Text {
-    let count = tradingUsers.size() + 1;
-    let numStr = count.toText();
-    let padded = switch (numStr.size()) {
-      case (1) { "00000" # numStr };
-      case (2) { "0000" # numStr };
-      case (3) { "000" # numStr };
-      case (4) { "00" # numStr };
-      case (5) { "0" # numStr };
-      case (_) { numStr };
-    };
-    "RT-" # padded;
-  };
-
-  public shared func creditTradingReferralBonus(referrerId : Text) : async TradingUserResult {
-    switch (tradingUsers.get(referrerId)) {
-      case (null) { { ok = false; message = "Referrer not found" } };
-      case (?referrer) {
-        let updated = {
-          referrer with
-          virtualBalance = referrer.virtualBalance + 5;
-          referralBonus = referrer.referralBonus + 5;
-        };
-        tradingUsers.add(referrerId, updated);
-        { ok = true; message = "" };
-      };
-    };
   };
 };

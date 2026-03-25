@@ -72,29 +72,35 @@ function localUserToBackend(u: User): TradingUserBackend {
     kycStatus: u.kycStatus,
     paymentStatus: u.paymentStatus,
     accountStatus: u.accountStatus,
-    virtualBalance: BigInt(u.virtualBalance),
+    virtualBalance: BigInt(Math.round(u.virtualBalance)),
     watchlist: u.watchlist,
-    createdAt: BigInt(u.createdAt),
+    createdAt: BigInt(Math.round(u.createdAt)),
     referredBy: u.referredBy ? [u.referredBy] : [],
-    referralBonus: BigInt(u.referralBonus || 0),
+    referralBonus: BigInt(Math.round(u.referralBonus || 0)),
     esignature: "",
     tcSigned: false,
   };
 }
 
 export async function backendRegisterUser(user: User): Promise<boolean> {
-  try {
-    const actor = (await createActorWithConfig()) as any;
-    const backendUser = localUserToBackend(user);
-    const result = await actor.registerTradingUser(backendUser);
-    return result?.ok === true;
-  } catch (e) {
-    console.error(
-      "backendRegisterUser failed, using localStorage fallback:",
-      e,
-    );
-    return false;
+  const actor = (await createActorWithConfig()) as any;
+  const backendUser = localUserToBackend(user);
+  const result = await actor.registerTradingUser(backendUser);
+  if (!result?.ok) {
+    const msg = result?.message || "Registration failed on backend";
+    throw new Error(msg);
   }
+  // Also cache in localStorage for offline/fast reads
+  try {
+    const users = getUsers();
+    if (!users.find((x) => x.id === user.id)) {
+      users.push(user);
+      saveUsers(users);
+    }
+  } catch {
+    // cache failure is non-critical
+  }
+  return true;
 }
 
 export async function backendGetAllUsers(): Promise<User[]> {
@@ -102,14 +108,9 @@ export async function backendGetAllUsers(): Promise<User[]> {
     const actor = (await createActorWithConfig()) as any;
     const users: TradingUserBackend[] = await actor.getAllTradingUsers();
     const backendUsers = users.map(backendUserToLocal);
-    // Merge with localStorage: backend is source of truth, but include any local-only users
-    const localUsers = getUsers();
-    const backendIds = new Set(backendUsers.map((u) => u.id));
-    const localOnly = localUsers.filter((u) => !backendIds.has(u.id));
-    // Save merged list to localStorage for offline access
-    const merged = [...backendUsers, ...localOnly];
-    saveUsers(merged);
-    return merged;
+    // Backend is source of truth; save to localStorage for offline/cache
+    saveUsers(backendUsers);
+    return backendUsers;
   } catch (e) {
     console.error("backendGetAllUsers failed, using localStorage fallback:", e);
     return getUsers();
@@ -129,7 +130,7 @@ export async function backendGetUserByEmail(
     return null;
   } catch (e) {
     console.error(
-      "backendGetUserByEmail failed, using localStorage fallback:",
+      "getTradingUserByEmail failed, using localStorage fallback:",
       e,
     );
     return localGetUserByEmail(email);
@@ -141,6 +142,8 @@ export async function backendUpdateUser(user: User): Promise<boolean> {
     const actor = (await createActorWithConfig()) as any;
     const backendUser = localUserToBackend(user);
     const result = await actor.updateTradingUser(backendUser);
+    // Also update localStorage cache
+    localUpdateUser(user);
     return result?.ok === true;
   } catch (e) {
     console.error("backendUpdateUser failed, using localStorage fallback:", e);

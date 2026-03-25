@@ -57,6 +57,30 @@ export enum UserRole {
     user = "user",
     guest = "guest"
 }
+
+export interface TradingUser {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    passwordHash: string;
+    aadhaar: string;
+    pan: string;
+    digilockerRef: string;
+    paymentProof: string;
+    selfie: string;
+    kycStatus: string;
+    paymentStatus: string;
+    accountStatus: string;
+    virtualBalance: bigint;
+    watchlist: Array<string>;
+    createdAt: bigint;
+    referredBy: string;
+    referralBonus: bigint;
+    esignature: string;
+    tcSigned: boolean;
+}
+
 export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     calculateCommissions(_amount: bigint): Promise<Array<LevelCommission>>;
@@ -73,4 +97,13 @@ export interface backendInterface {
     markJoiningFeePaid(memberId: MemberId): Promise<void>;
     registerMember(registration: MemberRegistration): Promise<MemberRegistrationResult>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    // Trading platform
+    registerTradingUser(user: TradingUser): Promise<{ ok: boolean; message: string }>;
+    getTradingUserByEmail(email: string): Promise<TradingUser | null>;
+    getAllTradingUsers(): Promise<Array<TradingUser>>;
+    updateTradingUser(user: TradingUser): Promise<{ ok: boolean }>;
+    updateTradingUserById(id: string, kycStatus: string, paymentStatus: string, accountStatus: string, virtualBalance: bigint): Promise<{ ok: boolean }>;
+    creditTradingReferralBonus(referrerId: string): Promise<{ ok: boolean }>;
+    nextTradingMemberId(): Promise<string>;
+    _initializeAccessControlWithSecret(secret: string): Promise<void>;
 }

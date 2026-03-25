@@ -7,7 +7,6 @@ import type React from "react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "../hooks/useAuth";
-import { getCurrentUser } from "../lib/store";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -35,7 +34,12 @@ export default function LoginPage() {
       if (session === "admin") {
         navigate({ to: "/admin" });
       } else {
-        const u = getCurrentUser();
+        // user state is set in AuthContext after login
+        // navigate based on tcSignature from backend user (loaded in login())
+        const u = JSON.parse(localStorage.getItem("ri_users") || "[]").find(
+          (x: { email: string }) =>
+            x.email.toLowerCase() === email.toLowerCase(),
+        );
         if (u && !u.tcSignature) navigate({ to: "/esign" });
         else navigate({ to: "/dashboard" });
       }
@@ -98,7 +102,16 @@ export default function LoginPage() {
               className="w-full bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold"
               data-ocid="login.submit_button"
             >
-              <LogIn size={16} className="mr-2" /> Sign In
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-navy-900/30 border-t-navy-900 rounded-full animate-spin" />
+                  Signing in...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <LogIn size={16} /> Sign In
+                </span>
+              )}
             </Button>
           </form>
 

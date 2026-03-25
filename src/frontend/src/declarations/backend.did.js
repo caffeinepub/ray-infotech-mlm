@@ -59,6 +59,31 @@ export const MemberRegistrationResult = IDL.Record({
   'memberId' : IDL.Text,
 });
 
+export const TradingUser = IDL.Record({
+  'id' : IDL.Text,
+  'name' : IDL.Text,
+  'email' : IDL.Text,
+  'phone' : IDL.Text,
+  'passwordHash' : IDL.Text,
+  'aadhaar' : IDL.Text,
+  'pan' : IDL.Text,
+  'digilockerRef' : IDL.Text,
+  'paymentProof' : IDL.Text,
+  'selfie' : IDL.Text,
+  'kycStatus' : IDL.Text,
+  'paymentStatus' : IDL.Text,
+  'accountStatus' : IDL.Text,
+  'virtualBalance' : IDL.Nat,
+  'watchlist' : IDL.Vec(IDL.Text),
+  'createdAt' : IDL.Int,
+  'referredBy' : IDL.Opt(IDL.Text),
+  'referralBonus' : IDL.Nat,
+  'esignature' : IDL.Text,
+  'tcSigned' : IDL.Bool,
+});
+export const TradingRegisterResult = IDL.Record({ 'ok' : IDL.Bool, 'message' : IDL.Text });
+export const TradingUpdateResult = IDL.Record({ 'ok' : IDL.Bool });
+
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
@@ -92,6 +117,13 @@ export const idlService = IDL.Service({
       [],
     ),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'registerTradingUser' : IDL.Func([TradingUser], [TradingRegisterResult], []),
+  'getTradingUserByEmail' : IDL.Func([IDL.Text], [IDL.Opt(TradingUser)], ['query']),
+  'getAllTradingUsers' : IDL.Func([], [IDL.Vec(TradingUser)], ['query']),
+  'updateTradingUser' : IDL.Func([TradingUser], [TradingUpdateResult], []),
+  'updateTradingUserById' : IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Nat], [TradingUpdateResult], []),
+  'creditTradingReferralBonus' : IDL.Func([IDL.Text], [TradingUpdateResult], []),
+  'nextTradingMemberId' : IDL.Func([], [IDL.Text], ['query']),
 });
 
 export const idlInitArgs = [];
@@ -147,7 +179,31 @@ export const idlFactory = ({ IDL }) => {
     'id' : MemberId,
     'memberId' : IDL.Text,
   });
-  
+  const TradingUser = IDL.Record({
+    'id' : IDL.Text,
+    'name' : IDL.Text,
+    'email' : IDL.Text,
+    'phone' : IDL.Text,
+    'passwordHash' : IDL.Text,
+    'aadhaar' : IDL.Text,
+    'pan' : IDL.Text,
+    'digilockerRef' : IDL.Text,
+    'paymentProof' : IDL.Text,
+    'selfie' : IDL.Text,
+    'kycStatus' : IDL.Text,
+    'paymentStatus' : IDL.Text,
+    'accountStatus' : IDL.Text,
+    'virtualBalance' : IDL.Nat,
+    'watchlist' : IDL.Vec(IDL.Text),
+    'createdAt' : IDL.Int,
+    'referredBy' : IDL.Opt(IDL.Text),
+    'referralBonus' : IDL.Nat,
+    'esignature' : IDL.Text,
+    'tcSigned' : IDL.Bool,
+  });
+  const TradingRegisterResult = IDL.Record({ 'ok' : IDL.Bool, 'message' : IDL.Text });
+  const TradingUpdateResult = IDL.Record({ 'ok' : IDL.Bool });
+
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
@@ -181,6 +237,13 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'registerTradingUser' : IDL.Func([TradingUser], [TradingRegisterResult], []),
+    'getTradingUserByEmail' : IDL.Func([IDL.Text], [IDL.Opt(TradingUser)], ['query']),
+    'getAllTradingUsers' : IDL.Func([], [IDL.Vec(TradingUser)], ['query']),
+    'updateTradingUser' : IDL.Func([TradingUser], [TradingUpdateResult], []),
+    'updateTradingUserById' : IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Nat], [TradingUpdateResult], []),
+    'creditTradingReferralBonus' : IDL.Func([IDL.Text], [TradingUpdateResult], []),
+    'nextTradingMemberId' : IDL.Func([], [IDL.Text], ['query']),
   });
 };
 

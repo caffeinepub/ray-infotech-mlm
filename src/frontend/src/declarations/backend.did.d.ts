@@ -55,6 +55,30 @@ export interface UserProfile { 'contactInfo' : string, 'name' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export interface TradingUser {
+  'id' : string,
+  'name' : string,
+  'email' : string,
+  'phone' : string,
+  'passwordHash' : string,
+  'aadhaar' : string,
+  'pan' : string,
+  'digilockerRef' : string,
+  'paymentProof' : string,
+  'selfie' : string,
+  'kycStatus' : string,
+  'paymentStatus' : string,
+  'accountStatus' : string,
+  'virtualBalance' : bigint,
+  'watchlist' : Array<string>,
+  'createdAt' : bigint,
+  'referredBy' : [] | [string],
+  'referralBonus' : bigint,
+  'esignature' : string,
+  'tcSigned' : boolean,
+}
+export interface TradingRegisterResult { 'ok' : boolean, 'message' : string }
+export interface TradingUpdateResult { 'ok' : boolean }
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
@@ -75,6 +99,13 @@ export interface _SERVICE {
     MemberRegistrationResult
   >,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'registerTradingUser' : ActorMethod<[TradingUser], TradingRegisterResult>,
+  'getTradingUserByEmail' : ActorMethod<[string], [] | [TradingUser]>,
+  'getAllTradingUsers' : ActorMethod<[], Array<TradingUser>>,
+  'updateTradingUser' : ActorMethod<[TradingUser], TradingUpdateResult>,
+  'updateTradingUserById' : ActorMethod<[string, string, string, string, bigint], TradingUpdateResult>,
+  'creditTradingReferralBonus' : ActorMethod<[string], TradingUpdateResult>,
+  'nextTradingMemberId' : ActorMethod<[], string>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

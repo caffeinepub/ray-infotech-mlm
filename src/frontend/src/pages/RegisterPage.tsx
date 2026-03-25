@@ -13,7 +13,6 @@ import {
 import type React from "react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { getUserById, getUsers, nextMemberId, saveUsers } from "../lib/store";
 import type { User } from "../lib/store";
 import {
   backendGetAllUsers,
@@ -45,27 +44,77 @@ export default function RegisterPage() {
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("File too large (max 2MB)");
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("File too large (max 20MB)");
       return;
     }
     setProofName(file.name);
     const reader = new FileReader();
-    reader.onload = () => setProof(reader.result as string);
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 600;
+        let { width, height } = img;
+        if (width > MAX || height > MAX) {
+          if (width > height) {
+            height = Math.round((height * MAX) / width);
+            width = MAX;
+          } else {
+            width = Math.round((width * MAX) / height);
+            height = MAX;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressed = canvas.toDataURL("image/jpeg", 0.6);
+        setProof(compressed);
+        toast.success("Screenshot uploaded successfully");
+      };
+      img.src = reader.result as string;
+    };
+    reader.onerror = () => toast.error("Failed to read file");
     reader.readAsDataURL(file);
   };
 
   const handleSelfie = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Selfie too large (max 5MB)");
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("Selfie too large (max 20MB)");
       return;
     }
     const reader = new FileReader();
-    reader.onload = () => setSelfie(reader.result as string);
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 400;
+        let { width, height } = img;
+        if (width > MAX || height > MAX) {
+          if (width > height) {
+            height = Math.round((height * MAX) / width);
+            width = MAX;
+          } else {
+            width = Math.round((width * MAX) / height);
+            height = MAX;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressed = canvas.toDataURL("image/jpeg", 0.6);
+        setSelfie(compressed);
+      };
+      img.src = reader.result as string;
+    };
+    reader.onerror = () => toast.error("Failed to read selfie");
     reader.readAsDataURL(file);
-    // Reset input so same file can be re-selected after retake
     e.target.value = "";
   };
 
@@ -77,29 +126,29 @@ export default function RegisterPage() {
       toast.error("Please upload payment proof");
       return;
     }
-    // Check locally first for fast feedback
-    const localUsers = getUsers();
-    if (
-      localUsers.find((u) => u.email.toLowerCase() === form.email.toLowerCase())
-    ) {
-      toast.error("Email already registered");
-      return;
-    }
-    const referralId = form.referredBy.trim().toUpperCase();
-    if (referralId) {
-      const referrer = getUserById(referralId);
-      if (!referrer) {
-        // Also check backend merged list
-        const allUsers = await backendGetAllUsers();
-        const backendReferrer = allUsers.find((u) => u.id === referralId);
-        if (!backendReferrer) {
+    setRegistering(true);
+    try {
+      // Check if email already exists in backend
+      const allUsers = await backendGetAllUsers();
+      if (
+        allUsers.find((u) => u.email.toLowerCase() === form.email.toLowerCase())
+      ) {
+        toast.error("Email already registered");
+        setRegistering(false);
+        return;
+      }
+
+      // Validate referral code if provided
+      const referralId = form.referredBy.trim().toUpperCase();
+      if (referralId) {
+        const referrer = allUsers.find((u) => u.id === referralId);
+        if (!referrer) {
           toast.error("Invalid referral code. Please check and try again.");
+          setRegistering(false);
           return;
         }
       }
-    }
-    setRegistering(true);
-    try {
+
       const memberId = await backendNextMemberId();
       const newUser: User = {
         id: memberId,
@@ -120,12 +169,16 @@ export default function RegisterPage() {
         createdAt: Date.now(),
         referredBy: referralId || undefined,
       };
-      // Save to backend (primary)
-      await backendRegisterUser(newUser);
-      // Also save to localStorage as cache
-      const users = getUsers();
-      users.push(newUser);
-      saveUsers(users);
+
+      // Save to backend — this is required for cross-device visibility
+      const ok = await backendRegisterUser(newUser);
+      if (!ok) {
+        toast.error(
+          "Registration failed. Please check your connection and try again.",
+        );
+        return;
+      }
+
       setDone(newUser);
     } catch (err) {
       console.error("Registration error:", err);
@@ -363,7 +416,6 @@ export default function RegisterPage() {
                     Take a clear photo of your face for KYC verification.
                   </p>
                   <div className="flex gap-2">
-                    {/* Take Selfie using front camera */}
                     <button
                       type="button"
                       className="flex-1 flex flex-col items-center gap-1.5 border-2 border-dashed border-gold-500/40 rounded-xl p-4 hover:border-gold-500/70 hover:bg-gold-500/5 transition-all cursor-pointer"
@@ -376,7 +428,6 @@ export default function RegisterPage() {
                         Front camera
                       </span>
                     </button>
-                    {/* Upload Photo */}
                     <button
                       type="button"
                       className="flex-1 flex flex-col items-center gap-1.5 border-2 border-dashed border-border rounded-xl p-4 hover:border-gold-500/40 hover:bg-gold-500/5 transition-all cursor-pointer"
@@ -390,7 +441,6 @@ export default function RegisterPage() {
                       </span>
                     </button>
                   </div>
-                  {/* Hidden input for camera capture */}
                   <input
                     ref={selfieRef}
                     type="file"
@@ -399,7 +449,6 @@ export default function RegisterPage() {
                     onChange={handleSelfie}
                     className="hidden"
                   />
-                  {/* Hidden input for gallery upload */}
                   <input
                     ref={selfieUploadRef}
                     type="file"
@@ -463,23 +512,49 @@ export default function RegisterPage() {
 
             <div>
               <Label>Upload Payment Screenshot *</Label>
-              <button
-                type="button"
-                className="w-full border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-gold-500/50 transition-colors"
-                onClick={() => fileRef.current?.click()}
-                data-ocid="payment.upload_button"
-              >
-                <Upload
-                  size={20}
-                  className="mx-auto text-muted-foreground mb-2"
-                />
-                <p className="text-sm text-muted-foreground">
-                  {proofName || "Click to upload screenshot"}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Max 2MB (JPG/PNG)
-                </p>
-              </button>
+              {proof ? (
+                <div className="flex items-center gap-3 border rounded-lg p-3 bg-green-500/5 border-green-500/30">
+                  <CheckCircle size={18} className="text-green-400 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-green-400 font-medium">
+                      Screenshot uploaded
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {proofName}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-xs shrink-0"
+                    onClick={() => {
+                      setProof("");
+                      setProofName("");
+                    }}
+                  >
+                    Change
+                  </Button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="w-full border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-gold-500/50 transition-colors"
+                  onClick={() => fileRef.current?.click()}
+                  data-ocid="payment.upload_button"
+                >
+                  <Upload
+                    size={20}
+                    className="mx-auto text-muted-foreground mb-2"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Click to upload screenshot
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Any size accepted (auto-compressed)
+                  </p>
+                </button>
+              )}
               <input
                 ref={fileRef}
                 type="file"
@@ -503,7 +578,7 @@ export default function RegisterPage() {
                 type="submit"
                 className="flex-1 bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold"
                 data-ocid="payment.submit_button"
-                disabled={registering}
+                disabled={registering || !proof}
               >
                 {registering ? "Submitting..." : "Submit Registration"}
               </Button>

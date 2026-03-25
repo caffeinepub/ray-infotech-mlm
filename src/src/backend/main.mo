@@ -84,8 +84,20 @@ actor {
     tcSigned : Bool;
   };
 
+  stable var _tradingUserEntries : [(Text, TradingUser)] = [];
+  stable var tradingUserCount : Nat = 0;
   let tradingUsers = Map.empty<Text, TradingUser>(); // keyed by email
-  var tradingUserCount = 0;
+
+  system func preupgrade() {
+    _tradingUserEntries := tradingUsers.toArray();
+  };
+
+  system func postupgrade() {
+    for ((k, v) in _tradingUserEntries.vals()) {
+      tradingUsers.add(k, v);
+    };
+    _tradingUserEntries := [];
+  };
 
   public shared func registerTradingUser(user : TradingUser) : async { ok : Bool; message : Text } {
     // Check duplicate email
