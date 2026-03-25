@@ -25,10 +25,10 @@ export default function LoginPage() {
     return null;
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const ok = login(email.trim(), password);
+    const ok = await login(email.trim(), password);
     setLoading(false);
     if (ok) {
       const session = localStorage.getItem("ri_session");

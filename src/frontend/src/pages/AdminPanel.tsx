@@ -4,12 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 import {
   BarChart2,
   CheckCircle,
   Clock,
-  Copy,
   Download,
   Eye,
   EyeOff,
@@ -20,7 +18,7 @@ import {
   Share2,
   Shield,
   Trash2,
-  Upload,
+  TrendingUp,
   Users,
   Video,
   XCircle,
@@ -40,60 +38,65 @@ import {
   updateUser,
 } from "../lib/store";
 import type { DailyVideo, User } from "../lib/store";
+import {
+  backendCreditReferral,
+  backendGetAllUsers,
+  backendUpdateUser,
+} from "../lib/tradingApi";
 
 // ─── Tips Data ────────────────────────────────────────────────────────────────
 
-const TIPS: string[] = [
-  "Always invest with a stop-loss to protect your capital.",
-  "Diversify your portfolio — don't put all your eggs in one basket.",
-  "Understand a company's fundamentals before buying its stock.",
-  "Intraday trading requires discipline and quick decision-making.",
-  "Never invest money you can't afford to lose.",
-  "Bull markets can make you feel like a genius — stay humble.",
-  "Cut your losses short and let your profits run.",
-  "Study candlestick patterns to understand market sentiment.",
-  "The trend is your friend — trade with the trend.",
-  "News events can cause sharp price movements — trade carefully.",
-  "A rising P/E ratio may indicate overvaluation — compare with sector peers.",
-  "Book partial profits when a stock hits your target to lock in gains.",
-  "Volume confirms price — high volume on breakouts is a strong signal.",
-  "Don't chase stocks already up 10%+ in a single day.",
-  "Patience is your most profitable trading skill.",
-  "Sector rotation drives markets — identify which sector is leading.",
-  "Use moving averages to identify trend direction and support levels.",
-  "Never average down on a fundamentally broken stock.",
-  "Sensex and Nifty 50 are your market pulse — track them daily.",
-  "F&O trading amplifies both profits and losses — use with caution.",
-  "Blue-chip stocks offer stability; small-caps offer growth potential.",
-  "SEBI regulations protect your interests as an investor — stay informed.",
-  "Quarterly earnings results can make or break a stock's trend.",
-  "Keep a trading journal — review your wins and losses weekly.",
-  "Market corrections are opportunities, not disasters.",
-  "ETFs give instant diversification at low cost — great for beginners.",
-  "The 52-week high/low tells you where a stock has been; research tells you where it's going.",
-  "Don't let emotions drive your trades — stick to your strategy.",
-  "FII and DII flows influence market direction significantly.",
-  "Options decay (theta) works against buyers — be mindful of expiry.",
-  "A strong balance sheet with low debt is a sign of a quality company.",
-  "Technical analysis helps with timing; fundamental analysis helps with selection.",
-  "Risk management is more important than any trading strategy.",
-  "Avoid over-leveraging in futures — one bad trade can wipe your account.",
-  "Consistent small gains beat occasional large wins over the long run.",
+const TIPS = [
+  "Buy low, sell high — but never chase prices. Patience is your greatest edge in the market.",
+  "Diversify your portfolio across sectors to reduce risk. Never put all your eggs in one basket.",
+  "Always set a stop-loss before entering a trade. Protecting capital is more important than making profits.",
+  "Study the fundamentals of a company before investing. Good businesses make good long-term investments.",
+  "The market is driven by fear and greed. Learn to control your emotions to make rational decisions.",
+  "Intraday trading requires discipline. Define your entry, target, and stop-loss before placing any order.",
+  "Volume confirms the trend. High volume on a breakout signals strong conviction from market participants.",
+  "Never invest money you cannot afford to lose. Only use surplus funds for market investments.",
+  "Moving averages help identify trends. The 50-day and 200-day MAs are key levels watched by institutions.",
+  "The RSI indicator helps identify overbought and oversold conditions. Use it alongside price action.",
+  "News and events drive short-term volatility. Stay updated with corporate announcements and economic data.",
+  "Compound interest is the 8th wonder of the world — reinvest your profits to grow wealth over time.",
+  "Options trading offers leverage but also amplifies losses. Understand theta decay before buying options.",
+  "ETFs provide instant diversification at low cost. They are ideal for beginners starting their journey.",
+  "Technical analysis is the art of reading charts. Support and resistance levels guide entry and exit points.",
+  "Futures contracts are powerful but risky. Always use margin wisely and monitor your positions closely.",
+  "The Nifty 50 index represents India's top 50 companies. Tracking it gives a pulse of the overall market.",
+  "SEBI regulates Indian markets to protect investors. Always trade through registered and authorized brokers.",
+  "Candlestick patterns like Doji, Hammer, and Engulfing signal potential reversals — learn to read them.",
+  "Systematic Investment Plans (SIPs) in index funds beat most active traders over a 10-year horizon.",
+  "Corporate earnings season moves markets. Track quarterly results for your holdings carefully.",
+  "FII and DII flows influence market direction. High FII buying often signals bullish sentiment.",
+  "MACD crossovers signal momentum shifts. Use them with trend analysis for higher accuracy trades.",
+  "Bollinger Bands measure volatility. A squeeze often precedes a big move — be ready to act.",
+  "Support levels are price floors where buying interest emerges. Resistance levels are ceilings of selling.",
+  "Penny stocks are high-risk, low-liquidity instruments. Beginners should avoid them entirely.",
+  "A trading journal tracks your wins and losses. Review it weekly to identify patterns in your decisions.",
+  "Risk management means never risking more than 1-2% of your capital on a single trade.",
+  "Sector rotation is a strategy of moving capital from one sector to another based on economic cycles.",
+  "Book profits partially when your target is reached. Let the rest ride with a trailing stop-loss.",
+  "India VIX measures market fear. A rising VIX signals uncertainty — consider reducing position sizes.",
+  "Blue-chip stocks are shares of large, well-established companies with a history of stable returns.",
+  "Derivatives are used for hedging portfolios. A Nifty Put option can protect your long equity positions.",
+  "Pre-market analysis sets the tone for the day. Study global cues, SGX Nifty, and overnight news.",
+  "Happy Trading! Consistency and discipline compound into extraordinary results over the long term.",
 ];
+
+// ─── Helper Functions ─────────────────────────────────────────────────────────
 
 function getTodayDateString(): string {
   const now = new Date();
-  // Convert to IST
   const istOffset = 5.5 * 60 * 60 * 1000;
   const ist = new Date(now.getTime() + istOffset);
-  return `${ist.getUTCFullYear()}-${String(ist.getUTCMonth() + 1).padStart(2, "0")}-${String(ist.getUTCDate()).padStart(2, "0")}`;
+  return ist.toISOString().split("T")[0];
 }
 
 function getDayOfYear(dateStr: string): number {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const start = new Date(Date.UTC(y, 0, 0));
-  const date = new Date(Date.UTC(y, m - 1, d));
-  const diff = date.getTime() - start.getTime();
+  const d = new Date(dateStr);
+  const start = new Date(d.getFullYear(), 0, 0);
+  const diff = d.getTime() - start.getTime();
   return Math.floor(diff / 86_400_000);
 }
 
@@ -104,10 +107,34 @@ function isPast11PmIST(): boolean {
   return ist.getUTCHours() >= 23;
 }
 
-// ─── Tip of Day Tab ───────────────────────────────────────────────────────────
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+// ─── TipOfDayTab ──────────────────────────────────────────────────────────────
 
 function TipOfDayTab() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const videoCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [videoGenerating, setVideoGenerating] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
   const [todayStr, setTodayStr] = useState(() => getTodayDateString());
   const [tipIndex, setTipIndex] = useState(() => {
     const stored = localStorage.getItem("ray_tip_date");
@@ -131,16 +158,14 @@ function TipOfDayTab() {
     year: "numeric",
   });
 
-  // Countdown to 11 PM IST
   useEffect(() => {
     const tick = () => {
       const now = new Date();
       const istOffset = 5.5 * 60 * 60 * 1000;
       const ist = new Date(now.getTime() + istOffset);
-      // Target: 23:00 IST
       const target = new Date(ist);
       target.setUTCHours(23, 0, 0, 0);
-      let diff = target.getTime() - ist.getTime();
+      const diff = target.getTime() - ist.getTime();
       if (diff < 0) {
         setExpired(true);
         setCountdown("Expired");
@@ -157,7 +182,6 @@ function TipOfDayTab() {
     return () => clearInterval(t);
   }, []);
 
-  // Auto-refresh tip at midnight IST
   useEffect(() => {
     const check = setInterval(() => {
       const newDate = getTodayDateString();
@@ -194,25 +218,20 @@ function TipOfDayTab() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Background gradient
     const bg = ctx.createLinearGradient(0, 0, 0, H);
     bg.addColorStop(0, "#0f172a");
     bg.addColorStop(1, "#1e1b4b");
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
 
-    // Decorative top bar
     const bar = ctx.createLinearGradient(0, 0, W, 0);
     bar.addColorStop(0, "#d97706");
     bar.addColorStop(1, "#f59e0b");
     ctx.fillStyle = bar;
     ctx.fillRect(0, 0, W, 6);
-
-    // Decorative bottom bar
     ctx.fillStyle = bar;
     ctx.fillRect(0, H - 6, W, 6);
 
-    // Subtle grid dots
     ctx.fillStyle = "rgba(255,255,255,0.04)";
     for (let x = 20; x < W; x += 30) {
       for (let y = 30; y < H - 30; y += 30) {
@@ -222,7 +241,6 @@ function TipOfDayTab() {
       }
     }
 
-    // Brand circle
     ctx.beginPath();
     ctx.arc(W / 2, 100, 44, 0, Math.PI * 2);
     ctx.fillStyle = "rgba(217,119,6,0.15)";
@@ -231,7 +249,6 @@ function TipOfDayTab() {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Chart bar icon (simplified)
     const bars = [
       { x: W / 2 - 18, h: 28 },
       { x: W / 2 - 6, h: 40 },
@@ -243,13 +260,11 @@ function TipOfDayTab() {
       ctx.fillRect(b.x, 100 - b.h / 2, 8, b.h);
     }
 
-    // RAY INFOTECH title
     ctx.font = "bold 26px Arial, sans-serif";
     ctx.fillStyle = "#f59e0b";
     ctx.textAlign = "center";
     ctx.fillText("RAY INFOTECH", W / 2, 168);
 
-    // Divider
     ctx.strokeStyle = "rgba(245,158,11,0.4)";
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -257,14 +272,10 @@ function TipOfDayTab() {
     ctx.lineTo(W - 60, 182);
     ctx.stroke();
 
-    // TIP OF THE DAY
     ctx.font = "bold 14px Arial, sans-serif";
     ctx.fillStyle = "rgba(245,158,11,0.85)";
-    ctx.letterSpacing = "4px";
     ctx.fillText("TIP OF THE DAY", W / 2, 204);
-    ctx.letterSpacing = "0px";
 
-    // Tip card background
     const cardY = 224;
     const cardH = 300;
     const cardPad = 24;
@@ -275,12 +286,11 @@ function TipOfDayTab() {
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Quote mark
     ctx.font = "bold 60px Georgia, serif";
     ctx.fillStyle = "rgba(245,158,11,0.25)";
+    ctx.textAlign = "left";
     ctx.fillText("\u201C", cardPad + 16, cardY + 55);
 
-    // Tip text word wrap
     ctx.font = "500 18px Arial, sans-serif";
     ctx.fillStyle = "#f1f5f9";
     ctx.textAlign = "left";
@@ -302,23 +312,19 @@ function TipOfDayTab() {
     }
     if (line) ctx.fillText(line, textX, lineY);
 
-    // Date
     ctx.textAlign = "center";
     ctx.font = "13px Arial, sans-serif";
     ctx.fillStyle = "rgba(148,163,184,0.9)";
     ctx.fillText(formattedDate, W / 2, cardY + cardH + 28);
 
-    // Happy Trading footer
     ctx.font = "bold 18px Arial, sans-serif";
     ctx.fillStyle = "#f59e0b";
     ctx.fillText("Happy Trading! \uD83D\uDCC8", W / 2, H - 80);
 
-    // Watermark
     ctx.font = "12px Arial, sans-serif";
     ctx.fillStyle = "rgba(148,163,184,0.5)";
     ctx.fillText("rayinfotech.com", W / 2, H - 52);
 
-    // Bottom hashtags
     ctx.font = "11px Arial, sans-serif";
     ctx.fillStyle = "rgba(245,158,11,0.5)";
     ctx.fillText(
@@ -332,27 +338,6 @@ function TipOfDayTab() {
     drawCanvas();
   }, [drawCanvas]);
 
-  function roundRect(
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    r: number,
-  ) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    ctx.lineTo(x + r, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
-    ctx.closePath();
-  }
-
   const handleDownload = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -365,7 +350,7 @@ function TipOfDayTab() {
   };
 
   const handleShare = async () => {
-    const text = `📈 RAY INFOTECH — Tip of the Day\n\n"${tip}"\n\n${formattedDate}\nHappy Trading! 📈\n\n#RayInfotech #StockMarket #TipOfTheDay`;
+    const text = `\uD83D\uDCC8 RAY INFOTECH \u2014 Tip of the Day\n\n"${tip}"\n\n${formattedDate}\nHappy Trading! \uD83D\uDCC8\n\n#RayInfotech #StockMarket #TipOfTheDay`;
     if (navigator.share) {
       try {
         await navigator.share({ title: "RAY INFOTECH Tip of the Day", text });
@@ -382,38 +367,301 @@ function TipOfDayTab() {
     }
   };
 
+  const generateVideo = async () => {
+    const canvas = videoCanvasRef.current;
+    if (!canvas) return;
+    canvas.width = 390;
+    canvas.height = 693;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    setVideoGenerating(true);
+    setVideoProgress(0);
+
+    const drawVideoFrame = (
+      frameCtx: CanvasRenderingContext2D,
+      frame: number,
+      tipText: string,
+      dateStr: string,
+    ) => {
+      const W = 390;
+      const H = 693;
+
+      frameCtx.fillStyle = "#0f172a";
+      frameCtx.fillRect(0, 0, W, H);
+
+      frameCtx.fillStyle = "rgba(255,255,255,0.04)";
+      for (let x = 20; x < W; x += 30) {
+        for (let y = 30; y < H - 30; y += 30) {
+          frameCtx.beginPath();
+          frameCtx.arc(x, y, 1.5, 0, Math.PI * 2);
+          frameCtx.fill();
+        }
+      }
+
+      const t2 = frame / 360;
+      for (let i = 0; i < 20; i++) {
+        const px = (i * 73 + 30) % W;
+        const py = H - ((t2 * H * 2 + (i * H) / 20) % H);
+        const alpha = Math.sin(t2 * Math.PI * 4 + i) * 0.3 + 0.1;
+        frameCtx.fillStyle = `rgba(245,158,11,${Math.max(0, alpha)})`;
+        frameCtx.beginPath();
+        frameCtx.arc(px, py, 2, 0, Math.PI * 2);
+        frameCtx.fill();
+      }
+
+      const barAlpha = Math.min(1, frame / 60);
+      const barGrad = frameCtx.createLinearGradient(0, 0, W, 0);
+      barGrad.addColorStop(0, "#d97706");
+      barGrad.addColorStop(1, "#f59e0b");
+      frameCtx.fillStyle = barGrad;
+      frameCtx.globalAlpha = barAlpha;
+      frameCtx.fillRect(0, 0, W, 6);
+      frameCtx.fillRect(0, H - 6, W, 6);
+      frameCtx.globalAlpha = 1;
+
+      if (frame >= 60) {
+        const logoT = Math.min(1, (frame - 60) / 60);
+        frameCtx.save();
+        frameCtx.translate(W / 2, 100);
+        frameCtx.scale(logoT, logoT);
+        frameCtx.beginPath();
+        frameCtx.arc(0, 0, 44, 0, Math.PI * 2);
+        frameCtx.fillStyle = "rgba(217,119,6,0.15)";
+        frameCtx.fill();
+        frameCtx.strokeStyle = `rgba(245,158,11,${0.5 * logoT})`;
+        frameCtx.lineWidth = 2;
+        frameCtx.stroke();
+        const pulse = 44 + Math.sin(frame * 0.2) * 8;
+        frameCtx.beginPath();
+        frameCtx.arc(0, 0, pulse, 0, Math.PI * 2);
+        frameCtx.strokeStyle = `rgba(245,158,11,${0.15 * logoT})`;
+        frameCtx.lineWidth = 1;
+        frameCtx.stroke();
+        const bars2: [number, number][] = [
+          [-18, 28],
+          [-6, 40],
+          [6, 20],
+          [14, 34],
+        ];
+        frameCtx.fillStyle = "#f59e0b";
+        for (const [bx, bh] of bars2) {
+          frameCtx.fillRect(bx, -bh / 2, 8, bh);
+        }
+        frameCtx.restore();
+      }
+
+      if (frame >= 120) {
+        const brand = "RAY INFOTECH";
+        const chars = Math.floor(
+          Math.min(1, (frame - 120) / 60) * brand.length,
+        );
+        frameCtx.font = "bold 26px Arial, sans-serif";
+        frameCtx.fillStyle = "#f59e0b";
+        frameCtx.textAlign = "center";
+        frameCtx.fillText(brand.slice(0, chars), W / 2, 168);
+        if (chars === brand.length) {
+          const divAlpha = Math.min(1, (frame - 175) / 5);
+          frameCtx.strokeStyle = `rgba(245,158,11,${0.4 * divAlpha})`;
+          frameCtx.lineWidth = 1;
+          frameCtx.beginPath();
+          frameCtx.moveTo(60, 182);
+          frameCtx.lineTo(W - 60, 182);
+          frameCtx.stroke();
+        }
+      }
+
+      if (frame >= 180) {
+        const labelAlpha = Math.min(1, (frame - 180) / 60);
+        frameCtx.font = "bold 14px Arial, sans-serif";
+        frameCtx.fillStyle = `rgba(245,158,11,${0.85 * labelAlpha})`;
+        frameCtx.textAlign = "center";
+        frameCtx.fillText("TIP OF THE DAY", W / 2, 204);
+      }
+
+      if (frame >= 180) {
+        const cardAlpha = Math.min(1, (frame - 180) / 30);
+        const cardY = 224;
+        const cardH2 = 300;
+        const cardPad = 24;
+        frameCtx.fillStyle = `rgba(255,255,255,${0.05 * cardAlpha})`;
+        const r2 = 16;
+        frameCtx.beginPath();
+        frameCtx.moveTo(cardPad + r2, cardY);
+        frameCtx.lineTo(cardPad + (W - cardPad * 2) - r2, cardY);
+        frameCtx.quadraticCurveTo(
+          cardPad + (W - cardPad * 2),
+          cardY,
+          cardPad + (W - cardPad * 2),
+          cardY + r2,
+        );
+        frameCtx.lineTo(cardPad + (W - cardPad * 2), cardY + cardH2 - r2);
+        frameCtx.quadraticCurveTo(
+          cardPad + (W - cardPad * 2),
+          cardY + cardH2,
+          cardPad + (W - cardPad * 2) - r2,
+          cardY + cardH2,
+        );
+        frameCtx.lineTo(cardPad + r2, cardY + cardH2);
+        frameCtx.quadraticCurveTo(
+          cardPad,
+          cardY + cardH2,
+          cardPad,
+          cardY + cardH2 - r2,
+        );
+        frameCtx.lineTo(cardPad, cardY + r2);
+        frameCtx.quadraticCurveTo(cardPad, cardY, cardPad + r2, cardY);
+        frameCtx.closePath();
+        frameCtx.fill();
+        frameCtx.strokeStyle = `rgba(245,158,11,${0.2 * cardAlpha})`;
+        frameCtx.lineWidth = 1;
+        frameCtx.stroke();
+        frameCtx.font = "bold 60px Georgia, serif";
+        frameCtx.fillStyle = `rgba(245,158,11,${0.25 * cardAlpha})`;
+        frameCtx.textAlign = "left";
+        frameCtx.fillText("\u201C", cardPad + 16, cardY + 55);
+      }
+
+      if (frame >= 240) {
+        const words2 = tipText.split(" ");
+        const wordsToShow = Math.floor(
+          Math.min(words2.length, ((frame - 240) / 90) * words2.length),
+        );
+        frameCtx.font = "500 17px Arial, sans-serif";
+        frameCtx.fillStyle = "#f1f5f9";
+        frameCtx.textAlign = "left";
+        const cardY = 224;
+        const cardPad = 24;
+        const textX2 = cardPad + 20;
+        const textW2 = W - cardPad * 2 - 40;
+        const shown = words2.slice(0, wordsToShow).join(" ");
+        const lns: string[] = [];
+        let line2 = "";
+        for (const w of shown.split(" ")) {
+          const test = line2 ? `${line2} ${w}` : w;
+          if (frameCtx.measureText(test).width > textW2 && line2) {
+            lns.push(line2);
+            line2 = w;
+          } else {
+            line2 = test;
+          }
+        }
+        if (line2) lns.push(line2);
+        lns.forEach((l, i) =>
+          frameCtx.fillText(l, textX2, cardY + 80 + i * 28),
+        );
+      }
+
+      if (frame >= 300) {
+        const alpha = Math.min(1, (frame - 300) / 30);
+        const cardY = 224;
+        const cardH2 = 300;
+        frameCtx.textAlign = "center";
+        frameCtx.font = "13px Arial, sans-serif";
+        frameCtx.fillStyle = `rgba(148,163,184,${0.9 * alpha})`;
+        frameCtx.fillText(dateStr, W / 2, cardY + cardH2 + 28);
+      }
+
+      if (frame >= 330) {
+        const alpha = Math.min(1, (frame - 330) / 30);
+        frameCtx.textAlign = "center";
+        frameCtx.font = "bold 18px Arial, sans-serif";
+        frameCtx.fillStyle = `rgba(245,158,11,${alpha})`;
+        frameCtx.fillText("Happy Trading! \uD83D\uDCC8", W / 2, H - 80);
+        frameCtx.font = "12px Arial, sans-serif";
+        frameCtx.fillStyle = `rgba(148,163,184,${0.5 * alpha})`;
+        frameCtx.fillText("rayinfotech.com", W / 2, H - 52);
+        frameCtx.font = "11px Arial, sans-serif";
+        frameCtx.fillStyle = `rgba(245,158,11,${0.5 * alpha})`;
+        frameCtx.fillText(
+          "#RayInfotech #StockMarket #TipOfTheDay #Trading",
+          W / 2,
+          H - 30,
+        );
+      }
+    };
+
+    const mimeType =
+      typeof MediaRecorder !== "undefined" &&
+      MediaRecorder.isTypeSupported("video/webm;codecs=vp8")
+        ? "video/webm;codecs=vp8"
+        : "video/webm";
+
+    const stream = canvas.captureStream(30);
+    const recorder = new MediaRecorder(stream, {
+      mimeType,
+      videoBitsPerSecond: 4_000_000,
+    });
+    const chunks: BlobPart[] = [];
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunks.push(e.data);
+    };
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `RAY-INFOTECH-Tip-VIDEO-${todayStr}.webm`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setVideoGenerating(false);
+      setVideoProgress(100);
+      toast.success("Video downloaded! Ready for Instagram Reels.");
+    };
+
+    recorder.start();
+    let frame = 0;
+    const TOTAL_FRAMES = 360;
+
+    const animate = () => {
+      drawVideoFrame(ctx, frame, tip, formattedDate);
+      setVideoProgress(Math.floor((frame / TOTAL_FRAMES) * 100));
+      frame++;
+      if (frame <= TOTAL_FRAMES) {
+        requestAnimationFrame(animate);
+      } else {
+        recorder.stop();
+      }
+    };
+    requestAnimationFrame(animate);
+  };
+
   return (
     <div className="space-y-6" data-ocid="tipofday.section">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold flex items-center gap-2">
-            <Lightbulb size={20} className="text-gold-400" />
+            <TrendingUp size={18} className="text-gold-400" />
             Tip of the Day
           </h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Auto-generated daily tip card — ready to share on Instagram Reels
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Auto-generated daily tip card &mdash; ready to share on Instagram
+            Reels
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Badge
-            variant="outline"
-            className={`flex items-center gap-1.5 ${
-              expired
-                ? "bg-red-500/10 text-red-400 border-red-500/30"
-                : "bg-blue-500/10 text-blue-400 border-blue-500/30"
-            }`}
-          >
-            <Clock size={12} />
-            {expired
-              ? "Expired — refresh for next tip"
-              : `Resets in: ${countdown}`}
-          </Badge>
+        <div className="flex items-center gap-2">
+          {expired ? (
+            <Badge
+              variant="outline"
+              className="text-red-400 border-red-500/30 bg-red-500/10"
+            >
+              Expired
+            </Badge>
+          ) : (
+            <Badge
+              variant="outline"
+              className="text-green-400 border-green-500/30 bg-green-500/10"
+            >
+              <Clock size={10} className="mr-1" />
+              Resets in {countdown}
+            </Badge>
+          )}
           <Button
-            size="sm"
             variant="outline"
-            className="text-gold-400 border-gold-500/30 hover:bg-gold-500/10 text-xs"
+            size="sm"
             onClick={handleRefresh}
+            className="text-xs"
             data-ocid="tipofday.secondary_button"
           >
             <RefreshCw size={12} className="mr-1" />
@@ -422,66 +670,63 @@ function TipOfDayTab() {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6 items-start">
-        {/* Canvas Preview (hidden) + Styled HTML card preview */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Card Preview */}
         <div className="space-y-4">
-          <Card className="overflow-hidden border border-gold-500/20">
-            <CardHeader className="pb-2 pt-4 px-4">
-              <CardTitle className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                <Lightbulb size={13} className="text-gold-400" />
-                Preview — Instagram Reels Card (9:16)
+          <Card className="overflow-hidden">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Instagram size={15} className="text-pink-400" />
+                Preview &mdash; Instagram Reels Card (9:16)
               </CardTitle>
             </CardHeader>
-            <CardContent className="px-4 pb-4">
-              {/* Styled HTML tip card */}
+            <CardContent className="p-3 pt-0">
+              {/* 9:16 portrait card */}
               <div
                 style={{
                   width: "100%",
-                  aspectRatio: "9/16",
-                  maxWidth: 320,
+                  maxWidth: 280,
                   margin: "0 auto",
-                  background:
-                    "linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%)",
+                  aspectRatio: "9/16",
+                  background: "linear-gradient(180deg,#0f172a 0%,#1e1b4b 100%)",
                   borderRadius: 16,
-                  position: "relative",
                   overflow: "hidden",
+                  position: "relative",
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
-                  padding: "0 20px",
-                  boxShadow: "0 0 40px rgba(245,158,11,0.15)",
+                  padding: "0 16px",
                 }}
-                data-ocid="tipofday.card"
               >
-                {/* Top bar */}
+                {/* Top gold bar */}
                 <div
                   style={{
                     position: "absolute",
                     top: 0,
                     left: 0,
                     right: 0,
-                    height: 4,
-                    background: "linear-gradient(90deg, #d97706, #f59e0b)",
+                    height: 6,
+                    background: "linear-gradient(90deg,#d97706,#f59e0b)",
                   }}
                 />
-                {/* Bottom bar */}
+                {/* Bottom gold bar */}
                 <div
                   style={{
                     position: "absolute",
                     bottom: 0,
                     left: 0,
                     right: 0,
-                    height: 4,
-                    background: "linear-gradient(90deg, #d97706, #f59e0b)",
+                    height: 6,
+                    background: "linear-gradient(90deg,#d97706,#f59e0b)",
                   }}
                 />
 
                 {/* Logo circle */}
                 <div
                   style={{
-                    marginTop: "10%",
-                    width: 70,
-                    height: 70,
+                    marginTop: 32,
+                    width: 72,
+                    height: 72,
                     borderRadius: "50%",
                     background: "rgba(217,119,6,0.15)",
                     border: "2px solid rgba(245,158,11,0.5)",
@@ -600,7 +845,7 @@ function TipOfDayTab() {
                       marginBottom: 4,
                     }}
                   >
-                    Happy Trading! 📈
+                    Happy Trading! \uD83D\uDCC8
                   </div>
                   <div style={{ fontSize: 10, color: "rgba(148,163,184,0.5)" }}>
                     rayinfotech.com
@@ -621,6 +866,8 @@ function TipOfDayTab() {
 
           {/* Hidden canvas for PNG generation */}
           <canvas ref={canvasRef} style={{ display: "none" }} />
+          {/* Hidden canvas for video generation */}
+          <canvas ref={videoCanvasRef} style={{ display: "none" }} />
 
           {/* Action Buttons */}
           <div className="flex gap-3">
@@ -642,6 +889,30 @@ function TipOfDayTab() {
               Share / Copy
             </Button>
           </div>
+
+          {/* Generate Video Button */}
+          <Button
+            className="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 text-white font-semibold mt-2"
+            onClick={generateVideo}
+            disabled={videoGenerating}
+            data-ocid="tipofday.secondary_button"
+          >
+            <Video size={15} className="mr-2" />
+            {videoGenerating
+              ? `Generating... ${videoProgress}%`
+              : "Generate Video for Instagram Reels"}
+          </Button>
+          {videoGenerating && (
+            <div
+              className="w-full bg-muted rounded-full h-2 mt-2"
+              data-ocid="tipofday.loading_state"
+            >
+              <div
+                className="bg-gradient-to-r from-purple-500 to-pink-400 h-2 rounded-full transition-all"
+                style={{ width: `${videoProgress}%` }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Info Panel */}
@@ -658,7 +929,8 @@ function TipOfDayTab() {
                 <p className="text-base font-medium leading-relaxed">{tip}</p>
               </blockquote>
               <p className="text-xs text-muted-foreground mt-3">
-                📅 {formattedDate} — Tip #{tipIndex + 1} of {TIPS.length}
+                \uD83D\uDCC5 {formattedDate} &mdash; Tip #{tipIndex + 1} of{" "}
+                {TIPS.length}
               </p>
             </CardContent>
           </Card>
@@ -678,56 +950,46 @@ function TipOfDayTab() {
               <div className="flex justify-between py-2 border-b border-border">
                 <span className="text-muted-foreground">Time remaining</span>
                 <span
-                  className={`font-mono font-semibold ${
+                  className={`font-semibold ${
                     expired ? "text-red-400" : "text-green-400"
                   }`}
                 >
-                  {expired ? "Expired" : countdown}
-                </span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-border">
-                <span className="text-muted-foreground">Current tip index</span>
-                <span className="font-semibold">
-                  {tipIndex + 1} / {TIPS.length}
+                  {countdown}
                 </span>
               </div>
               <div className="flex justify-between py-2">
-                <span className="text-muted-foreground">
-                  Today's date (IST)
-                </span>
-                <span className="font-semibold">{todayStr}</span>
+                <span className="text-muted-foreground">Total tips</span>
+                <span className="font-semibold">{TIPS.length} tips</span>
               </div>
-              <p className="text-xs text-muted-foreground pt-1">
-                Tips rotate daily by day-of-year index. At 11 PM IST, the tip is
-                marked expired. A new tip auto-loads at midnight IST.
-              </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">
-                All Tips ({TIPS.length})
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Instagram size={15} className="text-pink-400" />
+                How to Share
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
-                {TIPS.map((t, i) => (
-                  <div
-                    key={t.slice(0, 30)}
-                    className={`text-xs p-2 rounded-lg border ${
-                      i === tipIndex
-                        ? "bg-gold-500/10 border-gold-500/40 text-foreground"
-                        : "border-border text-muted-foreground"
-                    }`}
-                  >
-                    <span className="font-semibold text-gold-400 mr-1">
-                      #{i + 1}
-                    </span>
-                    {t}
-                  </div>
-                ))}
-              </div>
+            <CardContent className="text-sm space-y-2 text-muted-foreground">
+              <p>
+                1. Click <strong>Download PNG</strong> to save the card image.
+              </p>
+              <p>
+                2. Or click <strong>Generate Video</strong> to create a
+                12-second animated WebM.
+              </p>
+              <p>
+                3. Open Instagram &rarr; Create Reel &rarr; Upload the file.
+              </p>
+              <p>
+                4. Use the <strong>Share / Copy</strong> button to copy caption
+                &amp; hashtags.
+              </p>
+              <p className="text-xs text-muted-foreground/60">
+                Video format: WebM (supported on Android). Convert to MP4 on iOS
+                if needed.
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -736,6 +998,326 @@ function TipOfDayTab() {
   );
 }
 
+// ─── Video Player ─────────────────────────────────────────────────────────────
+
+function VideoPlayer({ url }: { url: string }) {
+  const isInstagram = url.includes("instagram.com");
+  const isDirectVideo =
+    url.endsWith(".mp4") ||
+    url.endsWith(".webm") ||
+    url.endsWith(".mov") ||
+    url.startsWith("blob:");
+  const isYouTube = url.includes("youtube.com") || url.includes("youtu.be");
+
+  const getYouTubeEmbed = (u: string) => {
+    const match = u.match(
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?/]+)/,
+    );
+    return match ? `https://www.youtube.com/embed/${match[1]}` : u;
+  };
+
+  if (isInstagram) {
+    return (
+      <div className="text-center py-4">
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-pink-400 text-sm underline flex items-center justify-center gap-1"
+        >
+          <Instagram size={14} />
+          View on Instagram
+        </a>
+      </div>
+    );
+  }
+
+  if (isDirectVideo) {
+    return (
+      <video
+        src={url}
+        controls
+        className="w-full rounded-lg max-h-64"
+        playsInline
+      >
+        <track kind="captions" />
+      </video>
+    );
+  }
+
+  if (isYouTube) {
+    return (
+      <iframe
+        src={getYouTubeEmbed(url)}
+        className="w-full rounded-lg"
+        style={{ aspectRatio: "16/9" }}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        title="Market video"
+      />
+    );
+  }
+
+  return (
+    <div className="text-center py-4">
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-400 text-sm underline"
+      >
+        Open video link
+      </a>
+    </div>
+  );
+}
+
+// ─── Daily Videos Tab ─────────────────────────────────────────────────────────
+
+function DailyVideosTab() {
+  const [videos, setVideos] = useState<DailyVideo[]>(() => getDailyVideos());
+  const [title, setTitle] = useState("");
+  const [caption, setCaption] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const updated = getDailyVideos();
+      setVideos(updated);
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const reload = () => setVideos(getDailyVideos());
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) setVideoFile(file);
+  };
+
+  const handleAdd = async () => {
+    if (!title.trim()) {
+      toast.error("Please enter a title");
+      return;
+    }
+    if (!videoUrl.trim() && !videoFile) {
+      toast.error("Please enter a URL or upload a file");
+      return;
+    }
+
+    setUploading(true);
+    let finalUrl = videoUrl.trim();
+
+    if (videoFile) {
+      finalUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => resolve(ev.target?.result as string);
+        reader.readAsDataURL(videoFile);
+      });
+    }
+
+    addDailyVideo({
+      title: title.trim(),
+      caption: caption.trim() || undefined,
+      videoUrl: finalUrl,
+    });
+
+    setTitle("");
+    setCaption("");
+    setVideoUrl("");
+    setVideoFile(null);
+    setUploading(false);
+    reload();
+    toast.success("Video added successfully!");
+  };
+
+  const handleDelete = (id: string) => {
+    deleteDailyVideo(id);
+    reload();
+    toast.success("Video deleted");
+  };
+
+  const handleClearAll = () => {
+    clearDailyVideos();
+    reload();
+    toast.success("All videos cleared");
+  };
+
+  const handleShare = async (video: DailyVideo) => {
+    const text = `\uD83D\uDCC8 ${video.title}\n${video.caption ? `\n${video.caption}\n` : ""}\n${video.videoUrl}\n\n#RayInfotech #StockMarket #Trading`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: video.title, text });
+        return;
+      } catch {
+        // fallthrough
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Copied to clipboard! Share it on Instagram.");
+    } catch {
+      toast.error("Could not copy");
+    }
+  };
+
+  return (
+    <div className="space-y-6" data-ocid="videos.section">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <Video size={20} className="text-gold-400" />
+            Daily Market Videos
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Videos are automatically deleted at 11:00 PM IST daily
+          </p>
+        </div>
+        {videos.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleClearAll}
+            className="text-red-400 border-red-500/30 hover:bg-red-500/10 text-xs"
+            data-ocid="videos.delete_button"
+          >
+            <Trash2 size={12} className="mr-1" />
+            Clear All
+          </Button>
+        )}
+      </div>
+
+      {/* Add New */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Add New Market Video</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div>
+            <Label htmlFor="video-title">Title</Label>
+            <Input
+              id="video-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Today's Market Update"
+              data-ocid="videos.input"
+            />
+          </div>
+          <div>
+            <Label htmlFor="video-caption">Caption (optional)</Label>
+            <Input
+              id="video-caption"
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              placeholder="Short description for Instagram"
+              data-ocid="videos.input"
+            />
+          </div>
+          <div>
+            <Label htmlFor="video-url">Video URL</Label>
+            <Input
+              id="video-url"
+              value={videoUrl}
+              onChange={(e) => {
+                setVideoUrl(e.target.value);
+                if (e.target.value) setVideoFile(null);
+              }}
+              placeholder="YouTube / Instagram / .mp4 URL"
+              data-ocid="videos.input"
+            />
+          </div>
+          <div>
+            <Label>Upload Video File</Label>
+            <input
+              type="file"
+              accept="video/*"
+              onChange={handleFileChange}
+              className="block mt-1 text-sm text-muted-foreground file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-gold-500/20 file:text-gold-400 hover:file:bg-gold-500/30"
+              data-ocid="videos.upload_button"
+            />
+            {videoFile && (
+              <p className="text-xs text-green-400 mt-1">
+                Selected: {videoFile.name}
+              </p>
+            )}
+          </div>
+          <Button
+            onClick={handleAdd}
+            disabled={uploading}
+            className="w-full bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold"
+            data-ocid="videos.primary_button"
+          >
+            <Video size={15} className="mr-2" />
+            {uploading ? "Uploading..." : "Add Video"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Videos List */}
+      {videos.length === 0 ? (
+        <Card>
+          <CardContent
+            className="p-8 text-center text-muted-foreground"
+            data-ocid="videos.empty_state"
+          >
+            <Video size={32} className="mx-auto mb-2 opacity-30" />
+            No videos added today. Add one above to share on your Instagram
+            channel.
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {videos.map((video, idx) => (
+            <Card key={video.id} data-ocid={`videos.item.${idx + 1}`}>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="font-semibold">{video.title}</div>
+                    {video.caption && (
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {video.caption}
+                      </div>
+                    )}
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Added:{" "}
+                      {new Date(video.addedAt).toLocaleTimeString("en-IN")}
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs text-green-400 border-green-500/30 hover:bg-green-500/10"
+                      onClick={() => handleShare(video)}
+                    >
+                      <Instagram size={12} className="mr-1" />
+                      Share
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs text-red-400 border-red-500/30 hover:bg-red-500/10"
+                      onClick={() => handleDelete(video.id)}
+                      data-ocid={`videos.delete_button.${idx + 1}`}
+                    >
+                      <Trash2 size={12} />
+                    </Button>
+                  </div>
+                </div>
+                <VideoPlayer url={video.videoUrl} />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Admin Login Form ─────────────────────────────────────────────────────────
+
 function AdminLoginForm() {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
@@ -743,10 +1325,10 @@ function AdminLoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const ok = login(email.trim(), password);
+    const ok = await login(email.trim(), password);
     setLoading(false);
     if (!ok) {
       toast.error("Invalid admin credentials");
@@ -829,7 +1411,7 @@ function AdminLoginForm() {
         <p className="text-center text-xs text-muted-foreground mt-5">
           Not an admin?{" "}
           <a href="/login" className="text-gold-400 hover:text-gold-300">
-            Member login →
+            Member login &rarr;
           </a>
         </p>
       </div>
@@ -837,470 +1419,93 @@ function AdminLoginForm() {
   );
 }
 
-// ─── Video Player ─────────────────────────────────────────────────────────────
-
-function VideoPlayer({ url }: { url: string }) {
-  const isYouTube = url.includes("youtube.com") || url.includes("youtu.be");
-  const isInstagram = url.includes("instagram.com");
-  const isDirectVideo =
-    url.startsWith("blob:") ||
-    url.startsWith("data:video") ||
-    url.endsWith(".mp4") ||
-    url.endsWith(".webm") ||
-    url.endsWith(".mov");
-
-  if (isYouTube) {
-    let embedUrl = url;
-    const ytMatch = url.match(
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/,
-    );
-    if (ytMatch) {
-      embedUrl = `https://www.youtube.com/embed/${ytMatch[1]}`;
-    }
-    return (
-      <iframe
-        src={embedUrl}
-        className="w-full aspect-video rounded-lg"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-        title="YouTube video"
-      />
-    );
-  }
-
-  if (isInstagram) {
-    let embedUrl = url;
-    if (!url.includes("/embed")) {
-      embedUrl = `${url.replace(/\/$/, "")}/embed`;
-    }
-    return (
-      <iframe
-        src={embedUrl}
-        className="w-full rounded-lg"
-        style={{ minHeight: 480 }}
-        allowFullScreen
-        title="Instagram reel"
-      />
-    );
-  }
-
-  if (isDirectVideo) {
-    return (
-      <video
-        src={url}
-        controls
-        className="w-full aspect-video rounded-lg bg-black"
-      >
-        <track kind="captions" />
-        Your browser does not support the video tag.
-      </video>
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      <video
-        src={url}
-        controls
-        className="w-full aspect-video rounded-lg bg-black"
-      >
-        <track kind="captions" />
-        Your browser does not support the video tag.
-      </video>
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-xs text-blue-400 underline break-all"
-      >
-        {url}
-      </a>
-    </div>
-  );
-}
-
-// ─── Daily Videos Tab ─────────────────────────────────────────────────────────
-
-function DailyVideosTab() {
-  const [videos, setVideos] = useState<DailyVideo[]>(() => getDailyVideos());
-  const [title, setTitle] = useState("");
-  const [caption, setCaption] = useState("");
-  const [videoUrl, setVideoUrl] = useState("");
-  const [fileObjectUrl, setFileObjectUrl] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [countdown, setCountdown] = useState("");
-
-  useEffect(() => {
-    const check = () => {
-      const updated = getDailyVideos();
-      setVideos(updated);
-    };
-    check();
-    const interval = setInterval(check, 60_000);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    const tick = () => {
-      const now = new Date();
-      const istOffset = 5.5 * 60 * 60 * 1000;
-      const ist = new Date(now.getTime() + istOffset);
-      const target = new Date(ist);
-      target.setUTCHours(23, 0, 0, 0);
-      let diff = target.getTime() - ist.getTime();
-      if (diff < 0) diff = 0;
-      const h = Math.floor(diff / 3_600_000);
-      const m = Math.floor((diff % 3_600_000) / 60_000);
-      const s = Math.floor((diff % 60_000) / 1_000);
-      setCountdown(`${h}h ${m}m ${s}s`);
-    };
-    tick();
-    const t = setInterval(tick, 1_000);
-    return () => clearInterval(t);
-  }, []);
-
-  const reload = () => setVideos(getDailyVideos());
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (fileObjectUrl) URL.revokeObjectURL(fileObjectUrl);
-    const objUrl = URL.createObjectURL(file);
-    setFileObjectUrl(objUrl);
-    setVideoUrl("");
-    toast.success(`File "${file.name}" selected`);
-  };
-
-  const handleAdd = (e: React.FormEvent) => {
-    e.preventDefault();
-    const finalUrl = fileObjectUrl || videoUrl.trim();
-    if (!title.trim()) {
-      toast.error("Title is required");
-      return;
-    }
-    if (!finalUrl) {
-      toast.error("Please enter a video URL or upload a file");
-      return;
-    }
-    addDailyVideo({
-      title: title.trim(),
-      caption: caption.trim() || undefined,
-      videoUrl: finalUrl,
-    });
-    setTitle("");
-    setCaption("");
-    setVideoUrl("");
-    setFileObjectUrl("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
-    reload();
-    toast.success("Video added successfully!");
-  };
-
-  const handleDelete = (id: string) => {
-    deleteDailyVideo(id);
-    reload();
-    toast.success("Video deleted");
-  };
-
-  const handleClearAll = () => {
-    clearDailyVideos();
-    reload();
-    toast.success("All daily videos cleared");
-  };
-
-  const handleShare = async (video: DailyVideo) => {
-    const text = `Market Update: ${video.title}${video.caption ? ` — ${video.caption}` : ""}`;
-    const shareData = { title: video.title, text, url: video.videoUrl };
-    if (navigator.share && !video.videoUrl.startsWith("blob:")) {
-      try {
-        await navigator.share(shareData);
-        return;
-      } catch {
-        // fallthrough to clipboard
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(`${text}\n${video.videoUrl}`);
-      toast.success("Copied to clipboard! Share it on Instagram.");
-    } catch {
-      toast.error("Could not copy to clipboard");
-    }
-  };
-
-  const fmtTime = (ts: number) =>
-    new Date(ts).toLocaleTimeString("en-IN", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <Video size={20} className="text-gold-400" />
-            Daily Market Videos
-          </h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Videos are automatically deleted at 11:00 PM IST daily
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Badge
-            variant="outline"
-            className="bg-amber-500/10 text-amber-400 border-amber-500/30 flex items-center gap-1.5"
-          >
-            <Clock size={12} />
-            Auto-deletes at 11:00 PM IST
-          </Badge>
-          <Badge
-            variant="outline"
-            className="bg-blue-500/10 text-blue-400 border-blue-500/30 flex items-center gap-1.5"
-          >
-            <Clock size={12} />
-            {countdown} remaining
-          </Badge>
-          {videos.length > 0 && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-red-400 border-red-500/30 hover:bg-red-500/10 text-xs"
-              onClick={handleClearAll}
-              data-ocid="daily_videos.delete_button"
-            >
-              <Trash2 size={12} className="mr-1" />
-              Clear All
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Upload size={15} />
-            Add New Market Video
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleAdd} className="space-y-4">
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="video-title">Title *</Label>
-                <Input
-                  id="video-title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Today's Market Update"
-                  required
-                  data-ocid="daily_videos.input"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="video-url">Video URL</Label>
-                <Input
-                  id="video-url"
-                  value={videoUrl}
-                  onChange={(e) => {
-                    setVideoUrl(e.target.value);
-                    if (e.target.value) setFileObjectUrl("");
-                  }}
-                  placeholder="YouTube / Instagram / .mp4 URL"
-                  data-ocid="daily_videos.input"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="video-caption">Caption (optional)</Label>
-              <Textarea
-                id="video-caption"
-                value={caption}
-                onChange={(e) => setCaption(e.target.value)}
-                placeholder="Short description or market insights..."
-                rows={2}
-                data-ocid="daily_videos.textarea"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Upload Video File</Label>
-              <div className="flex items-center gap-3">
-                <label
-                  htmlFor="video-file"
-                  className="flex items-center gap-2 cursor-pointer px-4 py-2 rounded-lg border border-dashed border-border hover:border-gold-500/50 hover:bg-gold-500/5 transition-colors text-sm text-muted-foreground"
-                  data-ocid="daily_videos.upload_button"
-                >
-                  <Upload size={15} />
-                  Choose video file
-                  <input
-                    id="video-file"
-                    ref={fileInputRef}
-                    type="file"
-                    accept="video/*"
-                    className="hidden"
-                    onChange={handleFileChange}
-                  />
-                </label>
-                {fileObjectUrl && (
-                  <span className="text-xs text-green-400 flex items-center gap-1">
-                    <CheckCircle size={12} />
-                    File selected
-                  </span>
-                )}
-              </div>
-              {fileObjectUrl && (
-                <video
-                  src={fileObjectUrl}
-                  controls
-                  className="w-full max-w-xs aspect-video rounded-lg bg-black mt-2"
-                >
-                  <track kind="captions" />
-                </video>
-              )}
-            </div>
-
-            <Button
-              type="submit"
-              className="bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold"
-              data-ocid="daily_videos.submit_button"
-            >
-              <Video size={15} className="mr-2" />
-              Add Video
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      {videos.length === 0 ? (
-        <Card data-ocid="daily_videos.empty_state">
-          <CardContent className="p-10 text-center">
-            <Video
-              size={40}
-              className="mx-auto text-muted-foreground/40 mb-3"
-            />
-            <p className="text-muted-foreground font-medium">
-              No videos added today
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Add your first market update video above
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {videos.map((video, idx) => (
-            <Card
-              key={video.id}
-              className="overflow-hidden"
-              data-ocid={`daily_videos.item.${idx + 1}`}
-            >
-              <div className="bg-black/50">
-                <VideoPlayer url={video.videoUrl} />
-              </div>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-2 mb-1">
-                  <h3 className="font-semibold text-sm leading-tight">
-                    {video.title}
-                  </h3>
-                  <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
-                    <Clock size={10} />
-                    {fmtTime(video.addedAt)}
-                  </span>
-                </div>
-                {video.caption && (
-                  <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
-                    {video.caption}
-                  </p>
-                )}
-                <div className="flex gap-2 mt-3">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1 text-xs text-green-400 border-green-500/30 hover:bg-green-500/10"
-                    onClick={() => handleShare(video)}
-                    data-ocid={`daily_videos.secondary_button.${idx + 1}`}
-                  >
-                    <Instagram size={12} className="mr-1" />
-                    Share
-                    <Copy size={10} className="ml-1 opacity-60" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-xs text-red-400 border-red-500/30 hover:bg-red-500/10"
-                    onClick={() => handleDelete(video.id)}
-                    data-ocid={`daily_videos.delete_button.${idx + 1}`}
-                  >
-                    <Trash2 size={12} />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Admin Panel ──────────────────────────────────────────────────────────────
+// ─── Main AdminPanel ──────────────────────────────────────────────────────────
 
 export default function AdminPanel() {
   const { isAdmin } = useAuth();
   const [users, setUsers] = useState<User[]>(() => getUsers());
+  const [_loadingUsers, setLoadingUsers] = useState(false);
+
+  const reload = useCallback(async () => {
+    setLoadingUsers(true);
+    try {
+      const all = await backendGetAllUsers();
+      setUsers(all);
+    } catch {
+      setUsers(getUsers());
+    } finally {
+      setLoadingUsers(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    reload();
+    const interval = setInterval(reload, 10000);
+    return () => clearInterval(interval);
+  }, [reload]);
 
   if (!isAdmin) return <AdminLoginForm />;
 
-  const reload = () => setUsers(getUsers());
-
-  const approveKyc = (u: User) => {
+  const approveKyc = async (u: User) => {
     const updated = { ...u, kycStatus: "approved" as const };
     if (updated.paymentStatus === "approved") updated.virtualBalance = 1000000;
     updateUser(updated);
-    if (updated.paymentStatus === "approved") {
+    await backendUpdateUser(updated);
+    if (updated.paymentStatus === "approved" && updated.referredBy) {
       const credited = creditReferralBonus(updated);
+      await backendCreditReferral(updated.referredBy);
       if (credited) {
-        toast.success(`₹5 referral bonus credited to ${updated.referredBy}`);
+        toast.success(
+          `\u20b95 referral bonus credited to ${updated.referredBy}`,
+        );
       }
     }
     reload();
     toast.success(`KYC approved for ${u.name}`);
   };
 
-  const rejectKyc = (u: User) => {
-    updateUser({ ...u, kycStatus: "rejected" as const });
+  const rejectKyc = async (u: User) => {
+    const updated = { ...u, kycStatus: "rejected" as const };
+    updateUser(updated);
+    await backendUpdateUser(updated);
     reload();
     toast.error(`KYC rejected for ${u.name}`);
   };
 
-  const approvePayment = (u: User) => {
+  const approvePayment = async (u: User) => {
     const updated = { ...u, paymentStatus: "approved" as const };
     if (updated.kycStatus === "approved") updated.virtualBalance = 1000000;
     updateUser(updated);
-    if (updated.kycStatus === "approved") {
+    await backendUpdateUser(updated);
+    if (updated.kycStatus === "approved" && updated.referredBy) {
       const credited = creditReferralBonus(updated);
+      await backendCreditReferral(updated.referredBy);
       if (credited) {
-        toast.success(`₹5 referral bonus credited to ${updated.referredBy}`);
+        toast.success(
+          `\u20b95 referral bonus credited to ${updated.referredBy}`,
+        );
       }
     }
     reload();
     toast.success(`Payment approved for ${u.name}`);
   };
 
-  const rejectPayment = (u: User) => {
-    updateUser({ ...u, paymentStatus: "rejected" as const });
+  const rejectPayment = async (u: User) => {
+    const updated = { ...u, paymentStatus: "rejected" as const };
+    updateUser(updated);
+    await backendUpdateUser(updated);
     reload();
     toast.error(`Payment rejected for ${u.name}`);
   };
 
-  const toggleDebar = (u: User) => {
+  const toggleDebar = async (u: User) => {
     const newStatus =
       u.accountStatus === "active"
         ? ("debarred" as const)
         : ("active" as const);
-    updateUser({ ...u, accountStatus: newStatus });
+    const updated = { ...u, accountStatus: newStatus };
+    updateUser(updated);
+    await backendUpdateUser(updated);
     reload();
     toast.success(
       `${u.name} ${newStatus === "debarred" ? "debarred" : "activated"}`,
@@ -1315,7 +1520,7 @@ export default function AdminPanel() {
   );
 
   const fmt = (n: number) =>
-    `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+    `\u20b9${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
   const fmtDate = (ts: number) =>
     new Date(ts).toLocaleDateString("en-IN", {
       day: "2-digit",
@@ -1344,27 +1549,27 @@ export default function AdminPanel() {
 
       <Tabs defaultValue="overview">
         <TabsList className="mb-4 flex-wrap h-auto gap-1">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="members">Members ({users.length})</TabsTrigger>
-          <TabsTrigger value="kyc">KYC ({pendingKyc.length})</TabsTrigger>
-          <TabsTrigger value="payments">
+          <TabsTrigger value="overview" data-ocid="admin.tab">
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="members" data-ocid="admin.tab">
+            Members ({users.length})
+          </TabsTrigger>
+          <TabsTrigger value="kyc" data-ocid="admin.tab">
+            KYC ({pendingKyc.length})
+          </TabsTrigger>
+          <TabsTrigger value="payments" data-ocid="admin.tab">
             Payments ({pendingPayment.length})
           </TabsTrigger>
-          <TabsTrigger value="portfolios">Portfolios</TabsTrigger>
-          <TabsTrigger
-            value="daily-videos"
-            className="flex items-center gap-1.5"
-            data-ocid="daily_videos.tab"
-          >
-            <Video size={14} />
+          <TabsTrigger value="portfolios" data-ocid="admin.tab">
+            Portfolios
+          </TabsTrigger>
+          <TabsTrigger value="videos" data-ocid="admin.tab">
+            <Video size={14} className="mr-1" />
             Daily Videos
           </TabsTrigger>
-          <TabsTrigger
-            value="tipofday"
-            className="flex items-center gap-1.5"
-            data-ocid="tipofday.tab"
-          >
-            <Lightbulb size={14} />
+          <TabsTrigger value="tipofday" data-ocid="admin.tab">
+            <TrendingUp size={14} className="mr-1" />
             Tip of Day
           </TabsTrigger>
         </TabsList>
@@ -1469,35 +1674,32 @@ export default function AdminPanel() {
                     <th className="text-left p-3">KYC</th>
                     <th className="text-left p-3">Payment</th>
                     <th className="text-left p-3">Balance</th>
-                    <th className="text-left p-3">Referral Bonus</th>
+                    <th className="text-left p-3">Referral</th>
                     <th className="text-left p-3">Status</th>
                     <th className="text-left p-3">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((u) => (
+                  {users.map((u, idx) => (
                     <tr
                       key={u.id}
                       className="border-b border-border last:border-0"
+                      data-ocid={`members.item.${idx + 1}`}
                     >
                       <td className="p-3">
                         <div className="font-semibold">{u.name}</div>
                         <div className="text-xs text-muted-foreground font-mono">
                           {u.id}
                         </div>
-                        {u.tcSignature ? (
-                          <span className="inline-flex items-center gap-0.5 text-xs text-green-400 bg-green-400/10 px-1.5 py-0.5 rounded mt-0.5">
-                            T&C ✓
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-0.5 text-xs text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded mt-0.5">
-                            Not Signed
-                          </span>
-                        )}
                         {u.referredBy && (
                           <div className="flex items-center gap-1 text-xs text-green-400 mt-0.5">
                             <Gift size={10} />
                             ref: {u.referredBy}
+                          </div>
+                        )}
+                        {u.tcSignature && (
+                          <div className="text-xs text-blue-400 mt-0.5">
+                            \u2713 T&C Signed
                           </div>
                         )}
                       </td>
@@ -1507,6 +1709,13 @@ export default function AdminPanel() {
                       </td>
                       <td className="p-3">
                         <StatusBadge status={u.kycStatus} />
+                        {u.selfie && (
+                          <img
+                            src={u.selfie}
+                            alt="Selfie"
+                            className="w-8 h-8 rounded-full object-cover mt-1 border border-border"
+                          />
+                        )}
                       </td>
                       <td className="p-3">
                         <StatusBadge status={u.paymentStatus} />
@@ -1515,7 +1724,7 @@ export default function AdminPanel() {
                         {fmt(u.virtualBalance)}
                       </td>
                       <td className="p-3 text-xs font-semibold text-green-400">
-                        {u.referralBonus ? fmt(u.referralBonus) : "—"}
+                        {u.referralBonus ? fmt(u.referralBonus) : "\u2014"}
                       </td>
                       <td className="p-3">
                         <StatusBadge status={u.accountStatus} />
@@ -1526,6 +1735,7 @@ export default function AdminPanel() {
                           variant="outline"
                           onClick={() => toggleDebar(u)}
                           className="text-xs"
+                          data-ocid={`members.toggle.${idx + 1}`}
                         >
                           {u.accountStatus === "active" ? "Debar" : "Activate"}
                         </Button>
@@ -1537,6 +1747,7 @@ export default function AdminPanel() {
                       <td
                         colSpan={8}
                         className="p-8 text-center text-muted-foreground"
+                        data-ocid="members.empty_state"
                       >
                         No members registered yet
                       </td>
@@ -1552,17 +1763,20 @@ export default function AdminPanel() {
         <TabsContent value="kyc">
           {pendingKyc.length === 0 ? (
             <Card>
-              <CardContent className="p-8 text-center text-muted-foreground">
+              <CardContent
+                className="p-8 text-center text-muted-foreground"
+                data-ocid="kyc.empty_state"
+              >
                 No pending KYC approvals
               </CardContent>
             </Card>
           ) : (
             <div className="space-y-3">
-              {pendingKyc.map((u) => (
-                <Card key={u.id}>
+              {pendingKyc.map((u, idx) => (
+                <Card key={u.id} data-ocid={`kyc.item.${idx + 1}`}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
-                      <div>
+                      <div className="flex-1">
                         <div className="font-semibold">
                           {u.name}{" "}
                           <span className="text-xs text-muted-foreground font-mono ml-2">
@@ -1585,12 +1799,25 @@ export default function AdminPanel() {
                             </span>
                           )}
                         </div>
+                        {u.selfie && (
+                          <div className="mt-2">
+                            <div className="text-xs text-muted-foreground mb-1">
+                              Selfie:
+                            </div>
+                            <img
+                              src={u.selfie}
+                              alt="KYC Selfie"
+                              className="w-16 h-16 rounded-lg object-cover border border-border"
+                            />
+                          </div>
+                        )}
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 ml-4">
                         <Button
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white text-xs"
                           onClick={() => approveKyc(u)}
+                          data-ocid={`kyc.confirm_button.${idx + 1}`}
                         >
                           Approve
                         </Button>
@@ -1599,6 +1826,7 @@ export default function AdminPanel() {
                           variant="outline"
                           className="text-red-400 border-red-500/30 hover:bg-red-500/10 text-xs"
                           onClick={() => rejectKyc(u)}
+                          data-ocid={`kyc.delete_button.${idx + 1}`}
                         >
                           Reject
                         </Button>
@@ -1615,14 +1843,17 @@ export default function AdminPanel() {
         <TabsContent value="payments">
           {pendingPayment.length === 0 ? (
             <Card>
-              <CardContent className="p-8 text-center text-muted-foreground">
+              <CardContent
+                className="p-8 text-center text-muted-foreground"
+                data-ocid="payments.empty_state"
+              >
                 No pending payment approvals
               </CardContent>
             </Card>
           ) : (
             <div className="space-y-3">
-              {pendingPayment.map((u) => (
-                <Card key={u.id}>
+              {pendingPayment.map((u, idx) => (
+                <Card key={u.id} data-ocid={`payments.item.${idx + 1}`}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
@@ -1633,7 +1864,7 @@ export default function AdminPanel() {
                           </span>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          Amount: ₹1 | UPI
+                          Amount: \u20b91 | UPI
                         </div>
                         <div className="text-xs text-muted-foreground flex items-center gap-2">
                           Joined: {fmtDate(u.createdAt)}
@@ -1659,6 +1890,7 @@ export default function AdminPanel() {
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white text-xs"
                           onClick={() => approvePayment(u)}
+                          data-ocid={`payments.confirm_button.${idx + 1}`}
                         >
                           Approve
                         </Button>
@@ -1667,6 +1899,7 @@ export default function AdminPanel() {
                           variant="outline"
                           className="text-red-400 border-red-500/30 hover:bg-red-500/10 text-xs"
                           onClick={() => rejectPayment(u)}
+                          data-ocid={`payments.delete_button.${idx + 1}`}
                         >
                           Reject
                         </Button>
@@ -1694,12 +1927,13 @@ export default function AdminPanel() {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((u) => {
+                  {users.map((u, idx) => {
                     const userTrades = trades.filter((t) => t.userId === u.id);
                     return (
                       <tr
                         key={u.id}
                         className="border-b border-border last:border-0"
+                        data-ocid={`portfolios.item.${idx + 1}`}
                       >
                         <td className="p-3">
                           <div className="font-semibold">{u.name}</div>
@@ -1711,7 +1945,7 @@ export default function AdminPanel() {
                           {fmt(u.virtualBalance)}
                         </td>
                         <td className="text-right p-3 font-semibold text-green-400">
-                          {u.referralBonus ? fmt(u.referralBonus) : "—"}
+                          {u.referralBonus ? fmt(u.referralBonus) : "\u2014"}
                         </td>
                         <td className="text-right p-3">{userTrades.length}</td>
                         <td className="p-3">
@@ -1725,6 +1959,7 @@ export default function AdminPanel() {
                       <td
                         colSpan={5}
                         className="p-8 text-center text-muted-foreground"
+                        data-ocid="portfolios.empty_state"
                       >
                         No members yet
                       </td>
@@ -1737,7 +1972,7 @@ export default function AdminPanel() {
         </TabsContent>
 
         {/* Daily Videos */}
-        <TabsContent value="daily-videos">
+        <TabsContent value="videos">
           <DailyVideosTab />
         </TabsContent>
 

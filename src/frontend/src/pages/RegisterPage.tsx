@@ -15,6 +15,11 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { getUserById, getUsers, nextMemberId, saveUsers } from "../lib/store";
 import type { User } from "../lib/store";
+import {
+  backendGetAllUsers,
+  backendNextMemberId,
+  backendRegisterUser,
+} from "../lib/tradingApi";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -64,14 +69,19 @@ export default function RegisterPage() {
     e.target.value = "";
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const [registering, setRegistering] = useState(false);
+
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!proof) {
       toast.error("Please upload payment proof");
       return;
     }
-    const users = getUsers();
-    if (users.find((u) => u.email.toLowerCase() === form.email.toLowerCase())) {
+    // Check locally first for fast feedback
+    const localUsers = getUsers();
+    if (
+      localUsers.find((u) => u.email.toLowerCase() === form.email.toLowerCase())
+    ) {
       toast.error("Email already registered");
       return;
     }
@@ -79,32 +89,50 @@ export default function RegisterPage() {
     if (referralId) {
       const referrer = getUserById(referralId);
       if (!referrer) {
-        toast.error("Invalid referral code. Please check and try again.");
-        return;
+        // Also check backend merged list
+        const allUsers = await backendGetAllUsers();
+        const backendReferrer = allUsers.find((u) => u.id === referralId);
+        if (!backendReferrer) {
+          toast.error("Invalid referral code. Please check and try again.");
+          return;
+        }
       }
     }
-    const newUser: User = {
-      id: nextMemberId(),
-      name: form.name,
-      email: form.email,
-      phone: form.phone,
-      password: form.password,
-      aadhaar: form.aadhaar,
-      pan: form.pan,
-      digilockerRef: form.digilockerRef,
-      paymentProof: proof,
-      selfie: selfie || undefined,
-      kycStatus: "pending",
-      paymentStatus: "pending",
-      accountStatus: "active",
-      virtualBalance: 0,
-      watchlist: [],
-      createdAt: Date.now(),
-      referredBy: referralId || undefined,
-    };
-    users.push(newUser);
-    saveUsers(users);
-    setDone(newUser);
+    setRegistering(true);
+    try {
+      const memberId = await backendNextMemberId();
+      const newUser: User = {
+        id: memberId,
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        password: form.password,
+        aadhaar: form.aadhaar,
+        pan: form.pan,
+        digilockerRef: form.digilockerRef,
+        paymentProof: proof,
+        selfie: selfie || undefined,
+        kycStatus: "pending",
+        paymentStatus: "pending",
+        accountStatus: "active",
+        virtualBalance: 0,
+        watchlist: [],
+        createdAt: Date.now(),
+        referredBy: referralId || undefined,
+      };
+      // Save to backend (primary)
+      await backendRegisterUser(newUser);
+      // Also save to localStorage as cache
+      const users = getUsers();
+      users.push(newUser);
+      saveUsers(users);
+      setDone(newUser);
+    } catch (err) {
+      console.error("Registration error:", err);
+      toast.error("Registration failed. Please try again.");
+    } finally {
+      setRegistering(false);
+    }
   };
 
   if (done) {
@@ -475,8 +503,9 @@ export default function RegisterPage() {
                 type="submit"
                 className="flex-1 bg-gold-500 hover:bg-gold-600 text-navy-900 font-semibold"
                 data-ocid="payment.submit_button"
+                disabled={registering}
               >
-                Submit Registration
+                {registering ? "Submitting..." : "Submit Registration"}
               </Button>
             </div>
           </form>
