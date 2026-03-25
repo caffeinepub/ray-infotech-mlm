@@ -384,6 +384,30 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async registerTradingUser(user) {
+        const result = await this.actor.registerTradingUser(user);
+        return result;
+    }
+    async getAllTradingUsers() {
+        const result = await this.actor.getAllTradingUsers();
+        return result;
+    }
+    async getTradingUserByEmail(email) {
+        const result = await this.actor.getTradingUserByEmail(email);
+        return result;
+    }
+    async updateTradingUser(user) {
+        const result = await this.actor.updateTradingUser(user);
+        return result;
+    }
+    async nextTradingMemberId() {
+        const result = await this.actor.nextTradingMemberId();
+        return result;
+    }
+    async creditTradingReferralBonus(referrerId) {
+        const result = await this.actor.creditTradingReferralBonus(referrerId);
+        return result;
+    }
 }
 function from_candid_MemberPublic_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _MemberPublic): MemberPublic {
     return from_candid_record_n8(_uploadFile, _downloadFile, value);
