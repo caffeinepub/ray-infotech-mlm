@@ -40,6 +40,18 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   ]);
 }
 
+// Cached actor promise so we don't recreate on every call
+let _actorPromise: Promise<any> | null = null;
+function getActor(): Promise<any> {
+  if (!_actorPromise) {
+    _actorPromise = createActorWithConfig().catch((e) => {
+      _actorPromise = null; // reset so next call retries
+      throw e;
+    });
+  }
+  return _actorPromise;
+}
+
 function backendUserToLocal(u: TradingUserBackend): User {
   const esig = u.esignature;
   const signed = u.tcSigned;
@@ -97,7 +109,7 @@ function localUserToBackend(u: User): TradingUserBackend {
 }
 
 export async function backendRegisterUser(user: User): Promise<boolean> {
-  const actor = (await createActorWithConfig()) as any;
+  const actor = await withTimeout(getActor(), 15000);
   const backendUser = localUserToBackend(user);
   const result = await actor.registerTradingUser(backendUser);
   if (!result?.ok) {
@@ -107,7 +119,7 @@ export async function backendRegisterUser(user: User): Promise<boolean> {
   // Also cache in localStorage for offline/fast reads
   try {
     const users = getUsers();
-    if (!users.find((x) => x.id === user.id)) {
+    if (!users.find((x: User) => x.id === user.id)) {
       users.push(user);
       saveUsers(users);
     }
@@ -119,7 +131,7 @@ export async function backendRegisterUser(user: User): Promise<boolean> {
 
 export async function backendGetAllUsers(): Promise<User[]> {
   try {
-    const actor = (await createActorWithConfig()) as any;
+    const actor = await withTimeout(getActor(), 15000);
     const users: TradingUserBackend[] = await withTimeout(
       actor.getAllTradingUsers(),
       15000,
@@ -138,10 +150,11 @@ export async function backendGetUserByEmail(
   email: string,
 ): Promise<User | null> {
   try {
-    const actor = (await createActorWithConfig()) as any;
+    // Wrap entire operation (actor creation + call) in a single timeout
+    const actor = await withTimeout(getActor(), 8000);
     const result: [] | [TradingUserBackend] = await withTimeout(
       actor.getTradingUserByEmail(email),
-      10000,
+      8000,
     );
     if (Array.isArray(result) && result.length > 0 && result[0]) {
       return backendUserToLocal(result[0]);
@@ -158,7 +171,7 @@ export async function backendGetUserByEmail(
 
 export async function backendUpdateUser(user: User): Promise<boolean> {
   try {
-    const actor = (await createActorWithConfig()) as any;
+    const actor = await withTimeout(getActor(), 10000);
     const backendUser = localUserToBackend(user);
     const result = await actor.updateTradingUser(backendUser);
     // Also update localStorage cache
@@ -173,7 +186,7 @@ export async function backendUpdateUser(user: User): Promise<boolean> {
 
 export async function backendNextMemberId(): Promise<string> {
   try {
-    const actor = (await createActorWithConfig()) as any;
+    const actor = await withTimeout(getActor(), 8000);
     return await actor.nextTradingMemberId();
   } catch (e) {
     console.error(
@@ -188,7 +201,7 @@ export async function backendCreditReferral(
   referrerId: string,
 ): Promise<boolean> {
   try {
-    const actor = (await createActorWithConfig()) as any;
+    const actor = await withTimeout(getActor(), 10000);
     const result = await actor.creditTradingReferralBonus(referrerId);
     return result?.ok === true;
   } catch (e) {
