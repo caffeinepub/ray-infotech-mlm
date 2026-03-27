@@ -31,7 +31,18 @@ export interface TradingUserBackend {
   tcSigned: boolean;
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error("timeout")), ms),
+    ),
+  ]);
+}
+
 function backendUserToLocal(u: TradingUserBackend): User {
+  const esig = u.esignature;
+  const signed = u.tcSigned;
   return {
     id: u.id,
     name: u.name,
@@ -54,10 +65,13 @@ function backendUserToLocal(u: TradingUserBackend): User {
         ? u.referredBy[0]
         : undefined,
     referralBonus: Number(u.referralBonus),
+    tcSignature: signed && esig ? { dataUrl: esig, signedAt: 0 } : undefined,
   };
 }
 
 function localUserToBackend(u: User): TradingUserBackend {
+  const esigValue = u.tcSignature?.dataUrl ?? "";
+  const signedValue = !!u.tcSignature;
   return {
     id: u.id,
     name: u.name,
@@ -77,8 +91,8 @@ function localUserToBackend(u: User): TradingUserBackend {
     createdAt: BigInt(Math.round(u.createdAt)),
     referredBy: u.referredBy ? [u.referredBy] : [],
     referralBonus: BigInt(Math.round(u.referralBonus || 0)),
-    esignature: "",
-    tcSigned: false,
+    esignature: esigValue,
+    tcSigned: signedValue,
   };
 }
 
@@ -106,7 +120,10 @@ export async function backendRegisterUser(user: User): Promise<boolean> {
 export async function backendGetAllUsers(): Promise<User[]> {
   try {
     const actor = (await createActorWithConfig()) as any;
-    const users: TradingUserBackend[] = await actor.getAllTradingUsers();
+    const users: TradingUserBackend[] = await withTimeout(
+      actor.getAllTradingUsers(),
+      15000,
+    );
     const backendUsers = users.map(backendUserToLocal);
     // Backend is source of truth; save to localStorage for offline/cache
     saveUsers(backendUsers);
@@ -122,8 +139,10 @@ export async function backendGetUserByEmail(
 ): Promise<User | null> {
   try {
     const actor = (await createActorWithConfig()) as any;
-    const result: [] | [TradingUserBackend] =
-      await actor.getTradingUserByEmail(email);
+    const result: [] | [TradingUserBackend] = await withTimeout(
+      actor.getTradingUserByEmail(email),
+      10000,
+    );
     if (Array.isArray(result) && result.length > 0 && result[0]) {
       return backendUserToLocal(result[0]);
     }

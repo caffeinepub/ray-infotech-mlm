@@ -45,6 +45,16 @@ function parseSession(
   };
 }
 
+function mergeWithLocalSignature(
+  backendUser: User,
+  localUser: User | null,
+): User {
+  if (!backendUser.tcSignature && localUser?.tcSignature) {
+    return { ...backendUser, tcSignature: localUser.tcSignature };
+  }
+  return backendUser;
+}
+
 const AuthContext = createContext<AuthContextValue>({
   user: null,
   isAdmin: false,
@@ -69,10 +79,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     try {
-      const backendUser = await backendGetUserByEmail(parsed.email);
-      if (backendUser) {
-        updateUser(backendUser);
-        setUser(backendUser);
+      const fetched = await backendGetUserByEmail(parsed.email);
+      if (fetched) {
+        const merged = mergeWithLocalSignature(fetched, getCurrentUser());
+        updateUser(merged);
+        setUser(merged);
       }
     } catch (e) {
       console.error("refresh from backend failed:", e);
@@ -97,10 +108,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (localUser) setUser(localUser);
       // Then refresh from backend (cross-device sync)
       backendGetUserByEmail(parsed.email)
-        .then((backendUser) => {
-          if (backendUser) {
-            updateUser(backendUser);
-            setUser(backendUser);
+        .then((fetched) => {
+          if (fetched) {
+            const merged = mergeWithLocalSignature(fetched, localUser);
+            updateUser(merged);
+            setUser(merged);
           }
         })
         .catch((e) => {

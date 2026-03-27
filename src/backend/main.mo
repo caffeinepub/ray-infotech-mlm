@@ -11,14 +11,10 @@ import VarArray "mo:core/VarArray";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
-// Enable data migration with with-clause
-
 actor {
-  // Initialize the user system state
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
-  // Use UserRole type from AccessControl component
   type UserRole = AccessControl.UserRole;
 
   public type UserProfile = {
@@ -26,8 +22,7 @@ actor {
     contactInfo : Text;
   };
 
-  // Change userProfiles to persistent Map
-  let userProfiles = Map.empty<Principal, UserProfile>();
+  stable var userProfiles = Map.empty<Principal, UserProfile>();
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
@@ -95,13 +90,6 @@ actor {
     level : TreeLevel;
   };
 
-  type DownlineSlot = {
-    level : TreeLevel;
-    index : Nat;
-    position : MatrixPosition;
-    isFilled : Bool;
-  };
-
   type DownlinePositionInfo = {
     position : MLMTreePosition;
     pathToMember : [DownlinePosition];
@@ -154,8 +142,8 @@ actor {
 
   public type MLMError = Text;
 
-  let members = Map.empty<MemberId, Member>();
-  var nextMemberId = 1;
+  stable var members = Map.empty<MemberId, Member>();
+  stable var nextMemberId : Nat = 1;
 
   let threeDaysInNanoseconds = 3 * 24 * 60 * 60 * 1_000_000_000;
 
@@ -469,6 +457,8 @@ actor {
 
   // ─── Trading Platform User Management ─────────────────────────────────────
 
+  // Keep esignature/tcSigned as their original types (Text/Bool) to preserve
+  // stable memory compatibility with the deployed canister.
   public type TradingUser = {
     id : Text;
     name : Text;
@@ -517,13 +507,8 @@ actor {
   };
 
   public shared func updateTradingUser(user : TradingUser) : async TradingUserResult {
-    if (tradingUsers.containsKey(user.id)) {
-      tradingUsers.add(user.id, user);
-      { ok = true; message = "" };
-    } else {
-      tradingUsers.add(user.id, user);
-      { ok = true; message = "" };
-    };
+    tradingUsers.add(user.id, user);
+    { ok = true; message = "" };
   };
 
   public query func nextTradingMemberId() : async Text {

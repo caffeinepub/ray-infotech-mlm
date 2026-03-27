@@ -11,6 +11,7 @@ import {
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { clearSession, getCurrentUser, updateUser } from "../lib/store";
+import { backendUpdateUser } from "../lib/tradingApi";
 
 export default function ESignaturePage() {
   const navigate = useNavigate();
@@ -107,14 +108,24 @@ export default function ESignaturePage() {
     setHasSigned(false);
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const user = getCurrentUser();
     if (!user) return;
     setIsSubmitting(true);
     const dataUrl = canvas.toDataURL("image/png");
-    updateUser({ ...user, tcSignature: { dataUrl, signedAt: Date.now() } });
+    const updatedUser = {
+      ...user,
+      tcSignature: { dataUrl, signedAt: Date.now() },
+    };
+    updateUser(updatedUser);
+    try {
+      await backendUpdateUser(updatedUser);
+    } catch (e) {
+      console.error("Failed to save e-signature to backend:", e);
+      // Not fatal — localStorage is still updated
+    }
     setTimeout(() => navigate({ to: "/dashboard" }), 600);
   }
 

@@ -1,11 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { HttpAgent } from "@icp-sdk/core/agent";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Camera,
   CheckCircle,
   Gift,
+  Loader2,
   RefreshCw,
   Upload,
   User as UserIcon,
@@ -13,12 +15,40 @@ import {
 import type React from "react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import { loadConfig } from "../config";
 import type { User } from "../lib/store";
 import {
   backendGetAllUsers,
   backendNextMemberId,
   backendRegisterUser,
 } from "../lib/tradingApi";
+import { StorageClient } from "../utils/StorageClient";
+
+async function uploadImageToStorage(base64DataUrl: string): Promise<string> {
+  try {
+    const config = await loadConfig();
+    const agent = new HttpAgent({ host: config.backend_host });
+    const storageClient = new StorageClient(
+      "default-bucket",
+      config.storage_gateway_url,
+      config.backend_canister_id,
+      config.project_id,
+      agent,
+    );
+    const base64 = base64DataUrl.split(",")[1];
+    if (!base64) throw new Error("Invalid image data");
+    const byteString = atob(base64);
+    const bytes = new Uint8Array(byteString.length);
+    for (let i = 0; i < byteString.length; i++)
+      bytes[i] = byteString.charCodeAt(i);
+    const { hash } = await storageClient.putFile(bytes);
+    return await storageClient.getDirectURL(hash);
+  } catch (err) {
+    console.error("uploadImageToStorage failed:", err);
+    // Fallback: store as base64 (will still be large, but better than crashing)
+    return base64DataUrl;
+  }
+}
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -119,6 +149,7 @@ export default function RegisterPage() {
   };
 
   const [registering, setRegistering] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,6 +180,17 @@ export default function RegisterPage() {
         }
       }
 
+      // Upload images to StorageClient (avoids 2MB IC canister limit)
+      setUploadProgress("Uploading payment proof...");
+      const paymentProofUrl = await uploadImageToStorage(proof);
+
+      let selfieUrl = "";
+      if (selfie) {
+        setUploadProgress("Uploading selfie...");
+        selfieUrl = await uploadImageToStorage(selfie);
+      }
+
+      setUploadProgress("Registering...");
       const memberId = await backendNextMemberId();
       const newUser: User = {
         id: memberId,
@@ -159,8 +201,8 @@ export default function RegisterPage() {
         aadhaar: form.aadhaar,
         pan: form.pan,
         digilockerRef: form.digilockerRef,
-        paymentProof: proof,
-        selfie: selfie || undefined,
+        paymentProof: paymentProofUrl,
+        selfie: selfieUrl || undefined,
         kycStatus: "pending",
         paymentStatus: "pending",
         accountStatus: "active",
@@ -185,6 +227,7 @@ export default function RegisterPage() {
       toast.error("Registration failed. Please try again.");
     } finally {
       setRegistering(false);
+      setUploadProgress("");
     }
   };
 
@@ -564,6 +607,13 @@ export default function RegisterPage() {
               />
             </div>
 
+            {registering && uploadProgress && (
+              <div className="flex items-center gap-2 text-xs text-gold-400 bg-gold-500/10 border border-gold-500/20 rounded-lg px-3 py-2">
+                <Loader2 size={13} className="animate-spin" />
+                <span>{uploadProgress}</span>
+              </div>
+            )}
+
             <div className="flex gap-2">
               <Button
                 type="button"
@@ -571,6 +621,7 @@ export default function RegisterPage() {
                 className="flex-1"
                 onClick={() => setStep(2)}
                 data-ocid="payment.back_button"
+                disabled={registering}
               >
                 Back
               </Button>
@@ -580,7 +631,14 @@ export default function RegisterPage() {
                 data-ocid="payment.submit_button"
                 disabled={registering || !proof}
               >
-                {registering ? "Submitting..." : "Submit Registration"}
+                {registering ? (
+                  <>
+                    <Loader2 size={14} className="mr-1 animate-spin" />
+                    {uploadProgress || "Submitting..."}
+                  </>
+                ) : (
+                  "Submit Registration"
+                )}
               </Button>
             </div>
           </form>
