@@ -11,6 +11,7 @@ import {
   clearSession,
   getCurrentUser,
   getSession,
+  getUserByEmail,
   getUsers,
   saveUsers,
   setSession,
@@ -84,6 +85,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const merged = mergeWithLocalSignature(fetched, getCurrentUser());
         updateUser(merged);
         setUser(merged);
+      } else {
+        // Backend didn't return user, fall back to local
+        const u = getCurrentUser();
+        setUser(u);
       }
     } catch (e) {
       console.error("refresh from backend failed:", e);
@@ -137,9 +142,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         return true;
       }
-      // Try backend first for cross-device login
+      // Try backend first for cross-device login, with aggressive 6s timeout
       try {
-        const backendUser = await backendGetUserByEmail(email);
+        const backendUserPromise = backendGetUserByEmail(email);
+        const timeoutPromise = new Promise<null>((resolve) =>
+          setTimeout(() => resolve(null), 6000),
+        );
+        const backendUser = await Promise.race([
+          backendUserPromise,
+          timeoutPromise,
+        ]);
         if (backendUser && backendUser.password === password) {
           // Sync to localStorage cache
           const users = getUsers();
@@ -150,7 +162,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             users[idx] = backendUser;
           }
           saveUsers(users);
-          // Store userId:email in session for backend refresh on reload
           setSession(`${backendUser.id}:${backendUser.email}`);
           setUser(backendUser);
           setIsAdmin(false);
@@ -158,6 +169,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (e) {
         console.error("Backend login lookup failed:", e);
+      }
+      // Fallback to localStorage for offline / cold-start scenarios
+      const localUser = getUserByEmail(email);
+      if (localUser && localUser.password === password) {
+        setSession(`${localUser.id}:${localUser.email}`);
+        setUser(localUser);
+        setIsAdmin(false);
+        return true;
       }
       return false;
     },

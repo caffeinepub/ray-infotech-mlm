@@ -10,11 +10,13 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import { useAuth } from "../hooks/useAuth";
 import { clearSession, getCurrentUser, updateUser } from "../lib/store";
 import { backendUpdateUser } from "../lib/tradingApi";
 
 export default function ESignaturePage() {
   const navigate = useNavigate();
+  const { user, refresh } = useAuth();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isSigning, setIsSigning] = useState(false);
   const [hasSigned, setHasSigned] = useState(false);
@@ -23,15 +25,15 @@ export default function ESignaturePage() {
   const lastPos = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
-    const user = getCurrentUser();
-    if (!user) {
+    const currentUser = user || getCurrentUser();
+    if (!currentUser) {
       navigate({ to: "/login" });
       return;
     }
-    if (user.tcSignature) {
+    if (currentUser.tcSignature) {
       navigate({ to: "/dashboard" });
     }
-  }, [navigate]);
+  }, [user, navigate]);
 
   // Initialize canvas
   useEffect(() => {
@@ -111,12 +113,12 @@ export default function ESignaturePage() {
   async function handleSubmit() {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const user = getCurrentUser();
-    if (!user) return;
+    const currentUser = user || getCurrentUser();
+    if (!currentUser) return;
     setIsSubmitting(true);
     const dataUrl = canvas.toDataURL("image/png");
     const updatedUser = {
-      ...user,
+      ...currentUser,
       tcSignature: { dataUrl, signedAt: Date.now() },
     };
     updateUser(updatedUser);
@@ -124,8 +126,8 @@ export default function ESignaturePage() {
       await backendUpdateUser(updatedUser);
     } catch (e) {
       console.error("Failed to save e-signature to backend:", e);
-      // Not fatal — localStorage is still updated
     }
+    await refresh();
     setTimeout(() => navigate({ to: "/dashboard" }), 600);
   }
 

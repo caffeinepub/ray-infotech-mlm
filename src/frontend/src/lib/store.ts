@@ -141,8 +141,11 @@ export function clearSession() {
 }
 
 export function getCurrentUser(): User | null {
-  const id = getSession();
-  if (!id) return null;
+  const session = getSession();
+  if (!session || session === "admin") return null;
+  // Session format: "userId:email" (new) or just "userId" (legacy)
+  const colonIdx = session.indexOf(":");
+  const id = colonIdx !== -1 ? session.substring(0, colonIdx) : session;
   return getUserById(id);
 }
 

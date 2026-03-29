@@ -34,14 +34,8 @@ export default function LoginPage() {
       if (session === "admin") {
         navigate({ to: "/admin" });
       } else {
-        // user state is set in AuthContext after login
-        // navigate based on tcSignature from backend user (loaded in login())
-        const u = JSON.parse(localStorage.getItem("ri_users") || "[]").find(
-          (x: { email: string }) =>
-            x.email.toLowerCase() === email.toLowerCase(),
-        );
-        if (u && !u.tcSignature) navigate({ to: "/esign" });
-        else navigate({ to: "/dashboard" });
+        // DashboardPage handles the esign redirect if tcSignature is missing
+        navigate({ to: "/dashboard" });
       }
     } else {
       toast.error("Invalid email or password");
