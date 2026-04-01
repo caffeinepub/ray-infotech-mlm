@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { useAuth } from "../hooks/useAuth";
 import { ASSETS, getSimulatedPrices } from "../lib/assets";
 import { getUserById, updateUser } from "../lib/store";
+import { backendUpdateUser } from "../lib/tradingApi";
 
 export default function WatchlistPage() {
   const navigate = useNavigate();
@@ -58,6 +59,7 @@ export default function WatchlistPage() {
       ? wl.filter((s) => s !== symbol)
       : [...wl, symbol];
     updateUser(freshUser);
+    backendUpdateUser(freshUser).catch(() => {});
     refresh();
     toast.success(isWatched ? "Removed from watchlist" : "Added to watchlist");
   };

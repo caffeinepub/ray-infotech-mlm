@@ -1,6 +1,13 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -19,9 +26,11 @@ import {
 import React, { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "../hooks/useAuth";
-import { ASSETS, getSimulatedPrices, isMarketOpen } from "../lib/assets";
+import { ASSETS, isMarketOpen } from "../lib/assets";
 import type { Asset } from "../lib/assets";
+import { usePrices } from "../lib/priceStore";
 import { addTrade, getHoldingQty, getUserById, updateUser } from "../lib/store";
+import { backendUpdateUser } from "../lib/tradingApi";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -260,6 +269,7 @@ function OrderPanelContent({
   setGttLimitPrice,
   liveCharges,
   isApproved,
+  marketOpen,
   handleTrade,
   toggleWatch,
   fmt,
@@ -285,6 +295,7 @@ function OrderPanelContent({
   setGttLimitPrice: (v: string) => void;
   liveCharges: Charges | null;
   isApproved: boolean;
+  marketOpen: boolean;
   handleTrade: () => void;
   toggleWatch: (s: string) => void;
   fmt: (n: number) => string;
@@ -508,7 +519,10 @@ function OrderPanelContent({
             : "bg-red-600 hover:bg-red-700"
         } text-white`}
         onClick={handleTrade}
-        disabled={!isApproved}
+        disabled={
+          !isApproved ||
+          (!marketOpen && orderVariant !== "GTT" && orderVariant !== "LIMIT")
+        }
       >
         {orderVariant === "GTT"
           ? "Place GTT Order"
@@ -610,8 +624,7 @@ function GTTOrdersPanel({
 export default function TradePage() {
   const navigate = useNavigate();
   const { user, refresh } = useAuth();
-  const [prices, setPrices] =
-    useState<Record<string, number>>(getSimulatedPrices);
+  const prices = usePrices();
   const [selected, setSelected] = useState<Asset | null>(null);
   const [qty, setQty] = useState("1");
   const [orderType, setOrderType] = useState<"BUY" | "SELL">("BUY");
@@ -620,6 +633,12 @@ export default function TradePage() {
   const [limitPrice, setLimitPrice] = useState("");
   const [triggerPrice, setTriggerPrice] = useState("");
   const [gttLimitPrice, setGttLimitPrice] = useState("");
+  const [tpinModalOpen, setTpinModalOpen] = useState(false);
+  const [generatedTpin, setGeneratedTpin] = useState("");
+  const [enteredTpin, setEnteredTpin] = useState("");
+  const [pendingSellExec, setPendingSellExec] = useState<(() => void) | null>(
+    null,
+  );
   const [search, setSearch] = useState("");
   const marketOpen = isMarketOpen();
   const orderPanelRef = useRef<HTMLDivElement>(null);
@@ -643,10 +662,7 @@ export default function TradePage() {
   useEffect(() => {
     if (!user) {
       navigate({ to: "/login" });
-      return;
     }
-    const interval = setInterval(() => setPrices(getSimulatedPrices()), 5000);
-    return () => clearInterval(interval);
   }, [user, navigate]);
 
   if (!user) return null;
@@ -699,6 +715,18 @@ export default function TradePage() {
     }, 50);
   };
 
+  const handleConfirmTpin = () => {
+    if (enteredTpin !== generatedTpin) {
+      toast.error("Incorrect TPIN. Please try again.");
+      return;
+    }
+    setTpinModalOpen(false);
+    if (pendingSellExec) {
+      pendingSellExec();
+      setPendingSellExec(null);
+    }
+  };
+
   const handleTrade = () => {
     if (!selected) {
       toast.error("Select a stock first");
@@ -716,6 +744,14 @@ export default function TradePage() {
     const price = prices[selected.symbol] || selected.basePrice;
     const tradeValue = price * quantity;
     const isIntraday = orderMode === "INTRADAY";
+
+    // Block MARKET/SL orders when market is closed
+    if (!marketOpen && orderVariant !== "GTT" && orderVariant !== "LIMIT") {
+      toast.error(
+        "Market is closed. You can place GTT or Limit orders only after market hours.",
+      );
+      return;
+    }
 
     if (orderVariant === "GTT") {
       const tp = Number.parseFloat(triggerPrice);
@@ -780,56 +816,68 @@ export default function TradePage() {
       quantity,
     );
 
-    const freshUser = getUserById(user.id);
-    if (!freshUser) return;
+    const doExecuteTrade = () => {
+      const freshUser = getUserById(user.id);
+      if (!freshUser) return;
 
-    if (orderType === "BUY") {
-      if (freshUser.virtualBalance < charges.netAmount) {
-        toast.error(
-          `Insufficient balance. Need ${fmt(charges.netAmount)} (incl. charges). Available: ${fmt(freshUser.virtualBalance)}`,
-        );
-        return;
+      if (orderType === "BUY") {
+        if (freshUser.virtualBalance < charges.netAmount) {
+          toast.error(
+            `Insufficient balance. Need ${fmt(charges.netAmount)} (incl. charges). Available: ${fmt(freshUser.virtualBalance)}`,
+          );
+          return;
+        }
+        freshUser.virtualBalance -= charges.netAmount;
+      } else {
+        const holding = getHoldingQty(user.id, selected!.symbol);
+        if (holding < quantity) {
+          toast.error(`Insufficient holdings. You have ${holding} shares`);
+          return;
+        }
+        freshUser.virtualBalance += charges.netAmount;
       }
-      freshUser.virtualBalance -= charges.netAmount;
+
+      addTrade({
+        id: `T${Date.now()}`,
+        userId: user.id,
+        symbol: selected!.symbol,
+        name: selected!.name,
+        assetType: selected!.type,
+        type: orderType,
+        quantity,
+        price,
+        timestamp: Date.now(),
+        charges: charges.totalCharges,
+        netAmount: charges.netAmount,
+      });
+
+      updateUser(freshUser);
+      backendUpdateUser(freshUser).catch(() => {});
+      refresh();
+
+      const fmtFull = (n: number) =>
+        `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      const slNote =
+        orderVariant === "SL" && triggerPrice ? ` [SL @ ₹${triggerPrice}]` : "";
+      toast.success(
+        `${orderType} order placed${slNote}: ${quantity} × ${selected!.symbol} @ ${fmt(price)} | Net ${
+          orderType === "BUY" ? "paid" : "received"
+        }: ${fmtFull(charges.netAmount)} (charges: ${fmtFull(charges.totalCharges)})`,
+      );
+      setQty("1");
+      setTriggerPrice("");
+      setLimitPrice("");
+    };
+
+    if (orderType === "SELL") {
+      const tpin = Math.floor(100000 + Math.random() * 900000).toString();
+      setGeneratedTpin(tpin);
+      setEnteredTpin("");
+      setPendingSellExec(() => doExecuteTrade);
+      setTpinModalOpen(true);
     } else {
-      const holding = getHoldingQty(user.id, selected.symbol);
-      if (holding < quantity) {
-        toast.error(`Insufficient holdings. You have ${holding} shares`);
-        return;
-      }
-      freshUser.virtualBalance += charges.netAmount;
+      doExecuteTrade();
     }
-
-    addTrade({
-      id: `T${Date.now()}`,
-      userId: user.id,
-      symbol: selected.symbol,
-      name: selected.name,
-      assetType: selected.type,
-      type: orderType,
-      quantity,
-      price,
-      timestamp: Date.now(),
-      charges: charges.totalCharges,
-      netAmount: charges.netAmount,
-    });
-
-    updateUser(freshUser);
-    refresh();
-
-    const fmtFull = (n: number) =>
-      `\u20b9${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-    const slNote =
-      orderVariant === "SL" && triggerPrice ? ` [SL @ ₹${triggerPrice}]` : "";
-    toast.success(
-      `${orderType} order placed${slNote}: ${quantity} × ${selected.symbol} @ ${fmt(price)} | Net ${
-        orderType === "BUY" ? "paid" : "received"
-      }: ${fmtFull(charges.netAmount)} (charges: ${fmtFull(charges.totalCharges)})`,
-    );
-    setQty("1");
-    setTriggerPrice("");
-    setLimitPrice("");
   };
 
   const liveCharges: Charges | null = (() => {
@@ -866,6 +914,7 @@ export default function TradePage() {
     setGttLimitPrice,
     liveCharges,
     isApproved,
+    marketOpen,
     handleTrade,
     toggleWatch,
     fmt,
@@ -990,6 +1039,83 @@ export default function TradePage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 pb-40 lg:pb-6">
+      {/* Market Closed Banner */}
+      {!marketOpen && (
+        <div
+          data-ocid="trade.market_closed.panel"
+          className="mb-4 rounded-lg bg-red-500/15 border border-red-500/30 px-4 py-3 flex items-center gap-2 text-red-400 text-sm"
+        >
+          <span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />
+          <span>
+            <strong>Market Closed</strong> — Trading suspended after 3:30 PM
+            IST. You can place <strong>GTT</strong> and <strong>Limit</strong>{" "}
+            orders for the next session.
+          </span>
+        </div>
+      )}
+
+      {/* TPIN Confirmation Modal */}
+      <Dialog open={tpinModalOpen} onOpenChange={setTpinModalOpen}>
+        <DialogContent data-ocid="trade.tpin.dialog" className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Enter TPIN to Confirm Sell</DialogTitle>
+          </DialogHeader>
+          <div className="py-2 space-y-4">
+            <div className="bg-muted rounded-lg p-4 text-center">
+              <p className="text-sm text-muted-foreground mb-1">
+                Your TPIN for this transaction:
+              </p>
+              <p className="text-3xl font-bold tracking-[0.3em] text-yellow-400">
+                {generatedTpin}
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Note: In a live account, this would be sent to your registered
+                email. For demo purposes, it is shown here.
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="tpin-input" className="text-sm mb-1.5 block">
+                Enter TPIN
+              </Label>
+              <Input
+                id="tpin-input"
+                data-ocid="trade.tpin.input"
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="6-digit TPIN"
+                value={enteredTpin}
+                onChange={(e) =>
+                  setEnteredTpin(e.target.value.replace(/\D/g, ""))
+                }
+                className="text-center tracking-widest text-lg"
+                onKeyDown={(e) => e.key === "Enter" && handleConfirmTpin()}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              data-ocid="trade.tpin.cancel_button"
+              onClick={() => {
+                setTpinModalOpen(false);
+                setPendingSellExec(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              data-ocid="trade.tpin.confirm_button"
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleConfirmTpin}
+              disabled={enteredTpin.length !== 6}
+            >
+              Confirm Sell
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold">Trade</h1>
         <div className="flex items-center gap-3">

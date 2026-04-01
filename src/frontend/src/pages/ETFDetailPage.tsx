@@ -11,23 +11,15 @@ import {
   TrendingUp,
 } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import CandlestickChart from "../components/CandlestickChart";
 import {
   ASSET_MAP,
   generateOrderBook,
   getNewsForSymbol,
-  getSimulatedPrices,
   isMarketOpen,
 } from "../lib/assets";
 import type { NewsItem, OrderBook } from "../lib/assets";
+import { usePrice } from "../lib/priceStore";
 
 const ETF_TRACKING_INDEX: Record<string, string> = {
   NIFTYBEES: "NIFTY 50",
@@ -46,56 +38,6 @@ const ETF_AUM: Record<string, string> = {
   HDFCNIFTY: "₹4,380 Cr",
   CPSEETF: "₹2,150 Cr",
 };
-
-interface CandleData {
-  time: string;
-  open: number;
-  close: number;
-  high: number;
-  low: number;
-  volume: number;
-}
-
-function generateInitialCandles(basePrice: number): CandleData[] {
-  const candles: CandleData[] = [];
-  let price = basePrice * (1 + (Math.random() - 0.5) * 0.02);
-  const now = Date.now();
-  for (let i = 29; i >= 0; i--) {
-    const open = price;
-    const change = price * (Math.random() * 0.008 - 0.004);
-    const close = Math.max(1, +(price + change).toFixed(2));
-    const high = Math.max(open, close) * (1 + Math.random() * 0.003);
-    const low = Math.min(open, close) * (1 - Math.random() * 0.003);
-    const t = new Date(now - i * 60 * 1000);
-    candles.push({
-      time: `${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}`,
-      open: +open.toFixed(2),
-      close: +close.toFixed(2),
-      high: +high.toFixed(2),
-      low: +low.toFixed(2),
-      volume: Math.floor(Math.random() * 50000) + 5000,
-    });
-    price = close;
-  }
-  return candles;
-}
-
-function ChartTooltip({
-  active,
-  payload,
-  label,
-}: { active?: boolean; payload?: { value: number }[]; label?: string }) {
-  if (!active || !payload?.length) return null;
-  const val = payload[0].value;
-  return (
-    <div className="bg-card border border-border rounded-lg px-3 py-2 text-xs shadow-xl">
-      <p className="text-muted-foreground mb-1">{label}</p>
-      <p className="font-bold text-foreground">
-        ₹{val.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
-      </p>
-    </div>
-  );
-}
 
 function OrderBookColumn({
   title,
@@ -188,11 +130,14 @@ export default function ETFDetailPage() {
   const symbol = params.symbol.toUpperCase();
   const asset = ASSET_MAP[symbol];
 
-  const [prices, setPrices] =
-    useState<Record<string, number>>(getSimulatedPrices);
-  const [candles, setCandles] = useState<CandleData[]>(() =>
-    generateInitialCandles(asset?.basePrice || 250),
-  );
+  const {
+    price: livePrice,
+    change: priceChangeVal,
+    changePct: pctChangeVal,
+  } = usePrice(symbol);
+  const bookInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const marketOpen = isMarketOpen();
+  const [volume] = useState(() => Math.floor(Math.random() * 2000000) + 200000);
   const [orderBook, setOrderBook] = useState<OrderBook>(() =>
     generateOrderBook(symbol, asset?.basePrice || 250),
   );
@@ -208,45 +153,23 @@ export default function ETFDetailPage() {
     const base = asset?.basePrice || 250;
     return +(base * (1 - Math.random() * 0.02)).toFixed(2);
   });
-  const [volume] = useState(() => Math.floor(Math.random() * 2000000) + 200000);
-  const marketOpen = isMarketOpen();
-  const chartInterval = useRef<ReturnType<typeof setInterval> | null>(null);
-  const bookInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!asset) return;
-    chartInterval.current = setInterval(() => {
-      const newPrices = getSimulatedPrices();
-      setPrices({ ...newPrices });
-      const curPrice = newPrices[symbol] || asset.basePrice;
-      setDayHigh((prev) => Math.max(prev, curPrice));
-      setDayLow((prev) => Math.min(prev, curPrice));
-      setCandles((prev) => {
-        const last = prev[prev.length - 1];
-        const updated = [...prev.slice(1)];
-        const now = new Date();
-        updated.push({
-          time: `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`,
-          open: last.close,
-          close: curPrice,
-          high: Math.max(last.close, curPrice) * (1 + Math.random() * 0.002),
-          low: Math.min(last.close, curPrice) * (1 - Math.random() * 0.002),
-          volume: Math.floor(Math.random() * 50000) + 5000,
-        });
-        return updated;
-      });
-    }, 3000);
     bookInterval.current = setInterval(() => {
-      const latestPrices = getSimulatedPrices();
-      const curPrice = latestPrices[symbol] || asset.basePrice;
-      setOrderBook(generateOrderBook(symbol, curPrice));
+      setOrderBook(generateOrderBook(symbol, livePrice || asset.basePrice));
     }, 2000);
     return () => {
-      if (chartInterval.current) clearInterval(chartInterval.current);
       if (bookInterval.current) clearInterval(bookInterval.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [asset, symbol]);
+  }, [asset, symbol, livePrice]);
+
+  useEffect(() => {
+    if (livePrice > 0) {
+      setDayHigh((prev) => Math.max(prev, livePrice));
+      setDayLow((prev) => Math.min(prev, livePrice));
+    }
+  }, [livePrice]);
 
   if (!asset) {
     return (
@@ -261,9 +184,9 @@ export default function ETFDetailPage() {
     );
   }
 
-  const currentPrice = prices[symbol] || asset.basePrice;
-  const priceChange = currentPrice - dayOpen;
-  const pctChange = (priceChange / dayOpen) * 100;
+  const currentPrice = livePrice || asset.basePrice;
+  const priceChange = priceChangeVal;
+  const pctChange = pctChangeVal;
   const isPositive = priceChange >= 0;
   const trackingIndex = ETF_TRACKING_INDEX[symbol] || "NSE Index";
   const aum = ETF_AUM[symbol] || "₹1,000 Cr";
@@ -274,10 +197,6 @@ export default function ETFDetailPage() {
   const news = getNewsForSymbol(symbol);
   const maxBidQty = Math.max(...orderBook.bids.map((b) => b.qty), 1);
   const maxAskQty = Math.max(...orderBook.asks.map((a) => a.qty), 1);
-  const chartData = candles.map((c) => ({ time: c.time, price: c.close }));
-  const chartMin = Math.min(...chartData.map((d) => d.price)) * 0.999;
-  const chartMax = Math.max(...chartData.map((d) => d.price)) * 1.001;
-
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 pb-28 lg:pb-6">
       <div className="flex items-start gap-3 mb-6">
@@ -378,57 +297,8 @@ export default function ETFDetailPage() {
             </span>
           </div>
         </CardHeader>
-        <CardContent className="px-2 pb-4">
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart
-              data={chartData}
-              margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
-            >
-              <defs>
-                <linearGradient id="navGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="5%"
-                    stopColor={isPositive ? "#22c55e" : "#ef4444"}
-                    stopOpacity={0.25}
-                  />
-                  <stop
-                    offset="95%"
-                    stopColor={isPositive ? "#22c55e" : "#ef4444"}
-                    stopOpacity={0.0}
-                  />
-                </linearGradient>
-              </defs>
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="rgba(255,255,255,0.05)"
-              />
-              <XAxis
-                dataKey="time"
-                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                tickLine={false}
-                axisLine={false}
-                interval={4}
-              />
-              <YAxis
-                domain={[chartMin, chartMax]}
-                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(v: number) => `₹${v.toFixed(0)}`}
-                width={52}
-              />
-              <Tooltip content={<ChartTooltip />} />
-              <Area
-                type="monotone"
-                dataKey="price"
-                stroke={isPositive ? "#22c55e" : "#ef4444"}
-                strokeWidth={2}
-                fill="url(#navGradient)"
-                dot={false}
-                activeDot={{ r: 4, strokeWidth: 0 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+        <CardContent className="p-0">
+          <CandlestickChart symbol={symbol} height={300} />
         </CardContent>
       </Card>
 

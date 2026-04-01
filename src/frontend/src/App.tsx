@@ -12,6 +12,7 @@ import ChatWidget from "./components/ChatWidget";
 import Footer from "./components/Footer";
 import Header from "./components/Header";
 import { AuthProvider } from "./hooks/useAuth";
+import { PriceProvider } from "./lib/priceStore";
 import AdminPanel from "./pages/AdminPanel";
 import ChatbotPage from "./pages/ChatbotPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -140,10 +141,12 @@ declare module "@tanstack/react-router" {
 export default function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-      <AuthProvider>
-        <RouterProvider router={router} />
-        <Toaster richColors position="top-right" />
-      </AuthProvider>
+      <PriceProvider>
+        <AuthProvider>
+          <RouterProvider router={router} />
+          <Toaster richColors position="top-right" />
+        </AuthProvider>
+      </PriceProvider>
     </ThemeProvider>
   );
 }

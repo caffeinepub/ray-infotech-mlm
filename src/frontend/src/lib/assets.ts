@@ -113,6 +113,626 @@ export const ASSETS: Asset[] = [
     basePrice: 1290,
     lotSize: 1,
   },
+  // Metals & Mining
+  {
+    symbol: "HINDALCO",
+    name: "Hindalco Industries",
+    type: "EQUITY",
+    basePrice: 680,
+    lotSize: 1,
+  },
+  {
+    symbol: "TATASTEEL",
+    name: "Tata Steel",
+    type: "EQUITY",
+    basePrice: 162,
+    lotSize: 1,
+  },
+  {
+    symbol: "JSWSTEEL",
+    name: "JSW Steel",
+    type: "EQUITY",
+    basePrice: 910,
+    lotSize: 1,
+  },
+  {
+    symbol: "COALINDIA",
+    name: "Coal India",
+    type: "EQUITY",
+    basePrice: 480,
+    lotSize: 1,
+  },
+  {
+    symbol: "VEDL",
+    name: "Vedanta Ltd",
+    type: "EQUITY",
+    basePrice: 460,
+    lotSize: 1,
+  },
+  {
+    symbol: "NMDC",
+    name: "NMDC Ltd",
+    type: "EQUITY",
+    basePrice: 230,
+    lotSize: 1,
+  },
+  {
+    symbol: "HINDZINC",
+    name: "Hindustan Zinc",
+    type: "EQUITY",
+    basePrice: 340,
+    lotSize: 1,
+  },
+  // Pharma
+  {
+    symbol: "CIPLA",
+    name: "Cipla Ltd",
+    type: "EQUITY",
+    basePrice: 1480,
+    lotSize: 1,
+  },
+  {
+    symbol: "SUNPHARMA",
+    name: "Sun Pharmaceutical",
+    type: "EQUITY",
+    basePrice: 1720,
+    lotSize: 1,
+  },
+  {
+    symbol: "DRREDDY",
+    name: "Dr Reddy's Laboratories",
+    type: "EQUITY",
+    basePrice: 6200,
+    lotSize: 1,
+  },
+  {
+    symbol: "DIVISLAB",
+    name: "Divi's Laboratories",
+    type: "EQUITY",
+    basePrice: 4900,
+    lotSize: 1,
+  },
+  {
+    symbol: "AUROPHARMA",
+    name: "Aurobindo Pharma",
+    type: "EQUITY",
+    basePrice: 1180,
+    lotSize: 1,
+  },
+  {
+    symbol: "LUPIN",
+    name: "Lupin Ltd",
+    type: "EQUITY",
+    basePrice: 1940,
+    lotSize: 1,
+  },
+  {
+    symbol: "BIOCON",
+    name: "Biocon Ltd",
+    type: "EQUITY",
+    basePrice: 340,
+    lotSize: 1,
+  },
+  {
+    symbol: "ABBOTINDIA",
+    name: "Abbott India",
+    type: "EQUITY",
+    basePrice: 28000,
+    lotSize: 1,
+  },
+  {
+    symbol: "RANBAXY",
+    name: "Ranbaxy Laboratories",
+    type: "EQUITY",
+    basePrice: 560,
+    lotSize: 1,
+  },
+  {
+    symbol: "ALKEM",
+    name: "Alkem Laboratories",
+    type: "EQUITY",
+    basePrice: 5600,
+    lotSize: 1,
+  },
+  {
+    symbol: "TORNTPHARM",
+    name: "Torrent Pharmaceuticals",
+    type: "EQUITY",
+    basePrice: 3200,
+    lotSize: 1,
+  },
+  {
+    symbol: "GLENMARK",
+    name: "Glenmark Pharmaceuticals",
+    type: "EQUITY",
+    basePrice: 1240,
+    lotSize: 1,
+  },
+  // Energy & Oil
+  {
+    symbol: "ONGC",
+    name: "Oil & Natural Gas Corp",
+    type: "EQUITY",
+    basePrice: 280,
+    lotSize: 1,
+  },
+  {
+    symbol: "BPCL",
+    name: "Bharat Petroleum",
+    type: "EQUITY",
+    basePrice: 620,
+    lotSize: 1,
+  },
+  {
+    symbol: "IOC",
+    name: "Indian Oil Corp",
+    type: "EQUITY",
+    basePrice: 170,
+    lotSize: 1,
+  },
+  {
+    symbol: "GAIL",
+    name: "GAIL India",
+    type: "EQUITY",
+    basePrice: 215,
+    lotSize: 1,
+  },
+  {
+    symbol: "POWERGRID",
+    name: "Power Grid Corp",
+    type: "EQUITY",
+    basePrice: 340,
+    lotSize: 1,
+  },
+  {
+    symbol: "NTPC",
+    name: "NTPC Ltd",
+    type: "EQUITY",
+    basePrice: 390,
+    lotSize: 1,
+  },
+  {
+    symbol: "ADANIENT",
+    name: "Adani Enterprises",
+    type: "EQUITY",
+    basePrice: 2950,
+    lotSize: 1,
+  },
+  {
+    symbol: "ADANIGREEN",
+    name: "Adani Green Energy",
+    type: "EQUITY",
+    basePrice: 1640,
+    lotSize: 1,
+  },
+  // Auto
+  {
+    symbol: "TATAMOTORS",
+    name: "Tata Motors",
+    type: "EQUITY",
+    basePrice: 960,
+    lotSize: 1,
+  },
+  {
+    symbol: "M&M",
+    name: "Mahindra & Mahindra",
+    type: "EQUITY",
+    basePrice: 1900,
+    lotSize: 1,
+  },
+  {
+    symbol: "BAJAJ-AUTO",
+    name: "Bajaj Auto",
+    type: "EQUITY",
+    basePrice: 9800,
+    lotSize: 1,
+  },
+  {
+    symbol: "HEROMOTOCO",
+    name: "Hero MotoCorp",
+    type: "EQUITY",
+    basePrice: 5400,
+    lotSize: 1,
+  },
+  {
+    symbol: "EICHERMOT",
+    name: "Eicher Motors",
+    type: "EQUITY",
+    basePrice: 4700,
+    lotSize: 1,
+  },
+  {
+    symbol: "ASHOKLEY",
+    name: "Ashok Leyland",
+    type: "EQUITY",
+    basePrice: 220,
+    lotSize: 1,
+  },
+  {
+    symbol: "TVSMOTOR",
+    name: "TVS Motor",
+    type: "EQUITY",
+    basePrice: 2400,
+    lotSize: 1,
+  },
+  // Banking & Finance
+  {
+    symbol: "INDUSINDBK",
+    name: "IndusInd Bank",
+    type: "EQUITY",
+    basePrice: 1560,
+    lotSize: 1,
+  },
+  {
+    symbol: "BANDHANBNK",
+    name: "Bandhan Bank",
+    type: "EQUITY",
+    basePrice: 220,
+    lotSize: 1,
+  },
+  {
+    symbol: "PNB",
+    name: "Punjab National Bank",
+    type: "EQUITY",
+    basePrice: 130,
+    lotSize: 1,
+  },
+  {
+    symbol: "BANKBARODA",
+    name: "Bank of Baroda",
+    type: "EQUITY",
+    basePrice: 260,
+    lotSize: 1,
+  },
+  {
+    symbol: "CANBK",
+    name: "Canara Bank",
+    type: "EQUITY",
+    basePrice: 115,
+    lotSize: 1,
+  },
+  {
+    symbol: "HDFCLIFE",
+    name: "HDFC Life Insurance",
+    type: "EQUITY",
+    basePrice: 720,
+    lotSize: 1,
+  },
+  {
+    symbol: "SBILIFE",
+    name: "SBI Life Insurance",
+    type: "EQUITY",
+    basePrice: 1700,
+    lotSize: 1,
+  },
+  {
+    symbol: "BAJAJFINSV",
+    name: "Bajaj Finserv",
+    type: "EQUITY",
+    basePrice: 1740,
+    lotSize: 1,
+  },
+  {
+    symbol: "MUTHOOTFIN",
+    name: "Muthoot Finance",
+    type: "EQUITY",
+    basePrice: 1900,
+    lotSize: 1,
+  },
+  // IT & Tech
+  {
+    symbol: "HCLTECH",
+    name: "HCL Technologies",
+    type: "EQUITY",
+    basePrice: 1860,
+    lotSize: 1,
+  },
+  {
+    symbol: "TECHM",
+    name: "Tech Mahindra",
+    type: "EQUITY",
+    basePrice: 1640,
+    lotSize: 1,
+  },
+  {
+    symbol: "MPHASIS",
+    name: "Mphasis Ltd",
+    type: "EQUITY",
+    basePrice: 2900,
+    lotSize: 1,
+  },
+  {
+    symbol: "LTIM",
+    name: "LTIMindtree",
+    type: "EQUITY",
+    basePrice: 5800,
+    lotSize: 1,
+  },
+  {
+    symbol: "PERSISTENT",
+    name: "Persistent Systems",
+    type: "EQUITY",
+    basePrice: 5600,
+    lotSize: 1,
+  },
+  {
+    symbol: "COFORGE",
+    name: "Coforge Ltd",
+    type: "EQUITY",
+    basePrice: 8200,
+    lotSize: 1,
+  },
+  // FMCG & Consumer
+  {
+    symbol: "ITC",
+    name: "ITC Ltd",
+    type: "EQUITY",
+    basePrice: 475,
+    lotSize: 1,
+  },
+  {
+    symbol: "NESTLEIND",
+    name: "Nestle India",
+    type: "EQUITY",
+    basePrice: 24800,
+    lotSize: 1,
+  },
+  {
+    symbol: "BRITANNIA",
+    name: "Britannia Industries",
+    type: "EQUITY",
+    basePrice: 5600,
+    lotSize: 1,
+  },
+  {
+    symbol: "DABUR",
+    name: "Dabur India",
+    type: "EQUITY",
+    basePrice: 580,
+    lotSize: 1,
+  },
+  {
+    symbol: "MARICO",
+    name: "Marico Ltd",
+    type: "EQUITY",
+    basePrice: 620,
+    lotSize: 1,
+  },
+  {
+    symbol: "GODREJCP",
+    name: "Godrej Consumer Products",
+    type: "EQUITY",
+    basePrice: 1260,
+    lotSize: 1,
+  },
+  {
+    symbol: "COLPAL",
+    name: "Colgate-Palmolive India",
+    type: "EQUITY",
+    basePrice: 2900,
+    lotSize: 1,
+  },
+  {
+    symbol: "EMAMILTD",
+    name: "Emami Ltd",
+    type: "EQUITY",
+    basePrice: 740,
+    lotSize: 1,
+  },
+  // Infra & Construction
+  {
+    symbol: "ULTRACEMCO",
+    name: "UltraTech Cement",
+    type: "EQUITY",
+    basePrice: 10800,
+    lotSize: 1,
+  },
+  {
+    symbol: "GRASIM",
+    name: "Grasim Industries",
+    type: "EQUITY",
+    basePrice: 2650,
+    lotSize: 1,
+  },
+  {
+    symbol: "AMBUJACEM",
+    name: "Ambuja Cements",
+    type: "EQUITY",
+    basePrice: 640,
+    lotSize: 1,
+  },
+  {
+    symbol: "ACC",
+    name: "ACC Ltd",
+    type: "EQUITY",
+    basePrice: 2450,
+    lotSize: 1,
+  },
+  {
+    symbol: "DLF",
+    name: "DLF Ltd",
+    type: "EQUITY",
+    basePrice: 840,
+    lotSize: 1,
+  },
+  {
+    symbol: "GODREJPROP",
+    name: "Godrej Properties",
+    type: "EQUITY",
+    basePrice: 2700,
+    lotSize: 1,
+  },
+  {
+    symbol: "OBEROIRLTY",
+    name: "Oberoi Realty",
+    type: "EQUITY",
+    basePrice: 1880,
+    lotSize: 1,
+  },
+  // Telecom & Media
+  {
+    symbol: "BHARTIARTL",
+    name: "Bharti Airtel",
+    type: "EQUITY",
+    basePrice: 1640,
+    lotSize: 1,
+  },
+  {
+    symbol: "IDEA",
+    name: "Vodafone Idea",
+    type: "EQUITY",
+    basePrice: 14,
+    lotSize: 1,
+  },
+  {
+    symbol: "ZOMATO",
+    name: "Zomato Ltd",
+    type: "EQUITY",
+    basePrice: 240,
+    lotSize: 1,
+  },
+  {
+    symbol: "NYKAA",
+    name: "FSN E-Commerce (Nykaa)",
+    type: "EQUITY",
+    basePrice: 180,
+    lotSize: 1,
+  },
+  {
+    symbol: "PAYTM",
+    name: "One97 Communications (Paytm)",
+    type: "EQUITY",
+    basePrice: 540,
+    lotSize: 1,
+  },
+  {
+    symbol: "POLICYBZR",
+    name: "PB Fintech (Policybazaar)",
+    type: "EQUITY",
+    basePrice: 1560,
+    lotSize: 1,
+  },
+  // Tata Group
+  {
+    symbol: "TATACHEM",
+    name: "Tata Chemicals",
+    type: "EQUITY",
+    basePrice: 1120,
+    lotSize: 1,
+  },
+  {
+    symbol: "TATACONSUM",
+    name: "Tata Consumer Products",
+    type: "EQUITY",
+    basePrice: 1180,
+    lotSize: 1,
+  },
+  {
+    symbol: "TATAPOWER",
+    name: "Tata Power",
+    type: "EQUITY",
+    basePrice: 440,
+    lotSize: 1,
+  },
+  {
+    symbol: "TITAN",
+    name: "Titan Company",
+    type: "EQUITY",
+    basePrice: 3600,
+    lotSize: 1,
+  },
+  // Others
+  {
+    symbol: "DMART",
+    name: "Avenue Supermarts (D-Mart)",
+    type: "EQUITY",
+    basePrice: 4800,
+    lotSize: 1,
+  },
+  {
+    symbol: "PIDILITIND",
+    name: "Pidilite Industries",
+    type: "EQUITY",
+    basePrice: 3200,
+    lotSize: 1,
+  },
+  {
+    symbol: "HAVELLS",
+    name: "Havells India",
+    type: "EQUITY",
+    basePrice: 1760,
+    lotSize: 1,
+  },
+  {
+    symbol: "SIEMENS",
+    name: "Siemens India",
+    type: "EQUITY",
+    basePrice: 7400,
+    lotSize: 1,
+  },
+  {
+    symbol: "ABB",
+    name: "ABB India",
+    type: "EQUITY",
+    basePrice: 8200,
+    lotSize: 1,
+  },
+  {
+    symbol: "BOSCHLTD",
+    name: "Bosch Ltd",
+    type: "EQUITY",
+    basePrice: 36000,
+    lotSize: 1,
+  },
+  {
+    symbol: "3MINDIA",
+    name: "3M India",
+    type: "EQUITY",
+    basePrice: 36000,
+    lotSize: 1,
+  },
+  {
+    symbol: "PAGEIND",
+    name: "Page Industries",
+    type: "EQUITY",
+    basePrice: 44000,
+    lotSize: 1,
+  },
+  {
+    symbol: "MCDOWELL-N",
+    name: "United Spirits (McDowell's)",
+    type: "EQUITY",
+    basePrice: 1140,
+    lotSize: 1,
+  },
+  {
+    symbol: "UBL",
+    name: "United Breweries",
+    type: "EQUITY",
+    basePrice: 1920,
+    lotSize: 1,
+  },
+  {
+    symbol: "RECLTD",
+    name: "REC Ltd",
+    type: "EQUITY",
+    basePrice: 560,
+    lotSize: 1,
+  },
+  {
+    symbol: "PFC",
+    name: "Power Finance Corp",
+    type: "EQUITY",
+    basePrice: 490,
+    lotSize: 1,
+  },
+  {
+    symbol: "IRFC",
+    name: "Indian Railway Finance Corp",
+    type: "EQUITY",
+    basePrice: 220,
+    lotSize: 1,
+  },
   // ETFs
   {
     symbol: "NIFTYBEES",
@@ -156,6 +776,41 @@ export const ASSETS: Asset[] = [
     basePrice: 94,
     lotSize: 1,
   },
+  {
+    symbol: "JUNIORBEES",
+    name: "Nippon India ETF Junior BeES",
+    type: "ETF",
+    basePrice: 720,
+    lotSize: 1,
+  },
+  {
+    symbol: "MOM100",
+    name: "Motilal Oswal Midcap 100 ETF",
+    type: "ETF",
+    basePrice: 48,
+    lotSize: 1,
+  },
+  {
+    symbol: "SILVERBEES",
+    name: "Nippon India Silver ETF",
+    type: "ETF",
+    basePrice: 92,
+    lotSize: 1,
+  },
+  {
+    symbol: "ITBEES",
+    name: "Nippon India ETF IT BeES",
+    type: "ETF",
+    basePrice: 38,
+    lotSize: 1,
+  },
+  {
+    symbol: "PHARMABEES",
+    name: "Nippon India ETF Pharma BeES",
+    type: "ETF",
+    basePrice: 22,
+    lotSize: 1,
+  },
   // F&O
   {
     symbol: "NIFTY-FUT",
@@ -192,6 +847,34 @@ export const ASSETS: Asset[] = [
     basePrice: 2875,
     lotSize: 250,
   },
+  {
+    symbol: "BANKNIFTY-45000CE",
+    name: "BankNifty 45000 Call Option",
+    type: "FNO",
+    basePrice: 320,
+    lotSize: 15,
+  },
+  {
+    symbol: "BANKNIFTY-44000PE",
+    name: "BankNifty 44000 Put Option",
+    type: "FNO",
+    basePrice: 210,
+    lotSize: 15,
+  },
+  {
+    symbol: "TCS-FUT",
+    name: "TCS Futures (Mar)",
+    type: "FNO",
+    basePrice: 3925,
+    lotSize: 150,
+  },
+  {
+    symbol: "INFY-FUT",
+    name: "Infosys Futures (Mar)",
+    type: "FNO",
+    basePrice: 1742,
+    lotSize: 300,
+  },
 ];
 
 export const ASSET_MAP = Object.fromEntries(ASSETS.map((a) => [a.symbol, a]));
@@ -200,6 +883,15 @@ export const ASSET_MAP = Object.fromEntries(ASSETS.map((a) => [a.symbol, a]));
 const priceState: Record<string, number> = {};
 
 export function getSimulatedPrices(): Record<string, number> {
+  if (!isMarketOpen()) {
+    // Market closed — return frozen prices without updating
+    for (const asset of ASSETS) {
+      if (!priceState[asset.symbol]) {
+        priceState[asset.symbol] = asset.basePrice;
+      }
+    }
+    return { ...priceState };
+  }
   for (const asset of ASSETS) {
     if (!priceState[asset.symbol]) {
       priceState[asset.symbol] = asset.basePrice;
@@ -247,6 +939,40 @@ const TV_SYMBOL_MAP: Record<string, string> = {
   AXISBANK: "AXISBANK",
   SBIN: "SBIN",
   ADANIPORTS: "ADANIPORTS",
+  HINDALCO: "HINDALCO",
+  TATASTEEL: "TATASTEEL",
+  JSWSTEEL: "JSWSTEEL",
+  COALINDIA: "COALINDIA",
+  VEDL: "VEDL",
+  CIPLA: "CIPLA",
+  SUNPHARMA: "SUNPHARMA",
+  DRREDDY: "DRREDDY",
+  DIVISLAB: "DIVISLAB",
+  AUROPHARMA: "AUROPHARMA",
+  LUPIN: "LUPIN",
+  BIOCON: "BIOCON",
+  ONGC: "ONGC",
+  BPCL: "BPCL",
+  IOC: "IOC",
+  GAIL: "GAIL",
+  POWERGRID: "POWERGRID",
+  NTPC: "NTPC",
+  ADANIENT: "ADANIENT",
+  TATAMOTORS: "TATAMOTORS",
+  HEROMOTOCO: "HEROMOTOCO",
+  HCLTECH: "HCLTECH",
+  TECHM: "TECHM",
+  ITC: "ITC",
+  NESTLEIND: "NESTLEIND",
+  BRITANNIA: "BRITANNIA",
+  DABUR: "DABUR",
+  ULTRACEMCO: "ULTRACEMCO",
+  GRASIM: "GRASIM",
+  BHARTIARTL: "BHARTIARTL",
+  TITAN: "TITAN",
+  DMART: "DMART",
+  ZOMATO: "ZOMATO",
+  TATAPOWER: "TATAPOWER",
 };
 
 export function getTradingViewSymbol(symbol: string): string {
@@ -357,14 +1083,6 @@ const NEWS_DB: Record<string, NewsItem[]> = {
       summary:
         "North America showed signs of revival while Europe remained muted.",
     },
-    {
-      headline:
-        "TCS recognised as a Leader in Gartner Magic Quadrant for IT Services",
-      source: "NDTV Profit",
-      time: "1 day ago",
-      summary:
-        "The company retained its leader position for the 12th consecutive year.",
-    },
   ],
   INFY: [
     {
@@ -381,21 +1099,6 @@ const NEWS_DB: Record<string, NewsItem[]> = {
       time: "4 hours ago",
       summary:
         "Topaz, its AI platform, now integrates with over 200 enterprise applications.",
-    },
-    {
-      headline:
-        "Infosys signs 10-year deal with UK government worth £1 billion",
-      source: "Business Standard",
-      time: "7 hours ago",
-      summary:
-        "The contract covers digital transformation of multiple public sector agencies.",
-    },
-    {
-      headline: "Infosys buyback of ₹9,300 crore opens next week",
-      source: "NDTV Profit",
-      time: "1 day ago",
-      summary:
-        "The buyback price is set at ₹1,850 per share, a 6% premium to current market price.",
     },
   ],
   HDFCBANK: [
@@ -414,21 +1117,6 @@ const NEWS_DB: Record<string, NewsItem[]> = {
       summary:
         "Customers can now access pre-approved personal loans up to ₹50 lakh in under 2 minutes.",
     },
-    {
-      headline:
-        "RBI gives HDFC Bank clean chit on digital banking restrictions",
-      source: "Business Standard",
-      time: "9 hours ago",
-      summary:
-        "The regulator lifted all restrictions imposed in 2020 on new digital products and credit card issuance.",
-    },
-    {
-      headline: "HDFC Bank overseas bond issuance of $750M oversubscribed 3x",
-      source: "NDTV Profit",
-      time: "1 day ago",
-      summary:
-        "Strong investor demand reflects confidence in the bank's creditworthiness post-HDFC merger.",
-    },
   ],
   SBIN: [
     {
@@ -446,19 +1134,141 @@ const NEWS_DB: Record<string, NewsItem[]> = {
       summary:
         "The scheme targets affordable housing segment and is available till March 31.",
     },
+  ],
+  HINDALCO: [
     {
-      headline: "SBI Q3 gross NPA declines to 2.42%, best in a decade",
-      source: "Business Standard",
-      time: "7 hours ago",
+      headline: "Hindalco Q3 profit up 72% on strong Novelis performance",
+      source: "Economic Times",
+      time: "2 hours ago",
       summary:
-        "Improved credit monitoring and recovery processes drove the asset quality improvement.",
+        "The US subsidiary Novelis reported record EBITDA, driving consolidated profit for Hindalco.",
     },
     {
-      headline: "Government may divest 5% stake in SBI through OFS route",
-      source: "NDTV Profit",
-      time: "2 days ago",
+      headline:
+        "Hindalco to invest ₹5,000 crore in aluminium expansion in Odisha",
+      source: "Business Standard",
+      time: "5 hours ago",
       summary:
-        "The proposed divestment would raise approximately ₹28,000 crore for the government.",
+        "The greenfield project will add 3.5 lakh tonnes of capacity, making Hindalco the largest aluminium producer in Asia.",
+    },
+    {
+      headline:
+        "Hindalco wins large green aluminium supply deal with European automaker",
+      source: "MoneyControl",
+      time: "1 day ago",
+      summary:
+        "The deal is part of growing global demand for low-carbon aluminium for EV manufacturing.",
+    },
+  ],
+  CIPLA: [
+    {
+      headline:
+        "Cipla receives USFDA approval for generic Revlimid; stock jumps 6%",
+      source: "Economic Times",
+      time: "1 hour ago",
+      summary:
+        "The approval for lenalidomide capsules opens a large US market opportunity estimated at $800M annually.",
+    },
+    {
+      headline: "Cipla Q3 net profit grows 28% driven by US and India business",
+      source: "MoneyControl",
+      time: "4 hours ago",
+      summary:
+        "India prescription business and specialty products in the US drove growth above analyst estimates.",
+    },
+    {
+      headline:
+        "Cipla launches affordable inhaler in rural India under PM Swasthya scheme",
+      source: "Business Standard",
+      time: "8 hours ago",
+      summary:
+        "The initiative targets COPD and asthma patients in tier-3 and tier-4 cities at 60% lower cost.",
+    },
+  ],
+  SUNPHARMA: [
+    {
+      headline:
+        "Sun Pharma's Ilumya sees strong US uptake; Q3 specialty revenue up 40%",
+      source: "Economic Times",
+      time: "2 hours ago",
+      summary:
+        "Specialty products now account for 18% of US revenues as dermatology pipeline matures.",
+    },
+    {
+      headline: "Sun Pharma acquires US dermatology brand for $400M",
+      source: "Business Standard",
+      time: "6 hours ago",
+      summary:
+        "The acquisition strengthens Sun's global leadership in dermatology with an established commercial product.",
+    },
+  ],
+  TATASTEEL: [
+    {
+      headline:
+        "Tata Steel UK operations turn profitable for the first time in five years",
+      source: "Economic Times",
+      time: "3 hours ago",
+      summary:
+        "Cost rationalisation and government support for green transition contributed to the turnaround.",
+    },
+    {
+      headline: "Tata Steel India capacity to reach 40 MTPA by FY28",
+      source: "MoneyControl",
+      time: "7 hours ago",
+      summary:
+        "The company is fast-tracking expansion at Kalinganagar to meet domestic infrastructure demand.",
+    },
+  ],
+  ONGC: [
+    {
+      headline: "ONGC discovers new oil reserves in Krishna-Godavari basin",
+      source: "Economic Times",
+      time: "2 hours ago",
+      summary:
+        "The discovery could add 150 million barrels of recoverable reserves, boosting domestic production outlook.",
+    },
+    {
+      headline: "ONGC Q3 profit rises 15% as oil prices stabilise",
+      source: "Business Standard",
+      time: "5 hours ago",
+      summary:
+        "Higher crude realisations and improved production from older fields supported earnings growth.",
+    },
+  ],
+  BHARTIARTL: [
+    {
+      headline:
+        "Airtel adds 4.2 million subscribers in January, leads 5G adoption",
+      source: "Economic Times",
+      time: "1 hour ago",
+      summary:
+        "Airtel now has 75 million 5G users on its network with coverage in 5,000+ cities and towns.",
+    },
+    {
+      headline:
+        "Airtel Business wins large enterprise cloud deal worth ₹1,800 crore",
+      source: "MoneyControl",
+      time: "4 hours ago",
+      summary:
+        "The 5-year deal covers managed cloud, cybersecurity, and IoT services for a PSU bank.",
+    },
+  ],
+  ZOMATO: [
+    {
+      headline:
+        "Zomato turns profitable for 4th consecutive quarter; Q3 PAT ₹138 crore",
+      source: "Economic Times",
+      time: "2 hours ago",
+      summary:
+        "Quick commerce via Blinkit continues to grow faster than core food delivery business.",
+    },
+    {
+      headline:
+        "Zomato's Blinkit hits 500 dark store milestone ahead of target",
+      source: "MoneyControl",
+      time: "6 hours ago",
+      summary:
+        "Strong execution in quick commerce positions Blinkit as the market leader in the 10-minute delivery segment.",
     },
   ],
 };

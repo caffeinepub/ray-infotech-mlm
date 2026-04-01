@@ -1,9 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "@tanstack/react-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import { useAuth } from "../hooks/useAuth";
-import { ASSETS, getSimulatedPrices, isMarketOpen } from "../lib/assets";
+import { ASSETS, isMarketOpen } from "../lib/assets";
+import { usePrice, usePrices } from "../lib/priceStore";
 
 function TradingViewWidget({
   symbol,
@@ -99,44 +100,69 @@ function TickerTape() {
 }
 
 const INDEX_DATA = [
-  { symbol: "SENSEX", name: "BSE SENSEX", base: 72845 },
-  { symbol: "NIFTY50", name: "NIFTY 50", base: 22100 },
-  { symbol: "BANKNIFTY", name: "BANK NIFTY", base: 47250 },
-  { symbol: "MIDCAP", name: "NIFTY MIDCAP 100", base: 51200 },
+  { symbol: "SENSEX", name: "BSE SENSEX" },
+  { symbol: "NIFTY", name: "NIFTY 50" },
+  { symbol: "BANKNIFTY", name: "BANK NIFTY" },
+  { symbol: "MIDCAP100", name: "NIFTY MIDCAP 100" },
 ];
+
+function IndexCard({ symbol, name }: { symbol: string; name: string }) {
+  const { price, change, changePct, direction } = usePrice(symbol);
+  const fmt = (n: number) =>
+    `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+  const isUp = direction === "up" || change >= 0;
+
+  return (
+    <Card className="bg-card border border-border">
+      <CardContent className="p-3">
+        <div className="text-xs text-muted-foreground mb-1">{name}</div>
+        <div className="text-lg font-bold tabular-nums">{fmt(price)}</div>
+        <div
+          className={`text-xs font-semibold ${isUp ? "text-green-400" : "text-red-400"}`}
+        >
+          {isUp ? "▲" : "▼"} {change >= 0 ? "+" : ""}
+          {change.toFixed(2)} ({isUp ? "+" : ""}
+          {changePct.toFixed(2)}%)
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PriceRow({ symbol, name }: { symbol: string; name: string }) {
+  const { price, change, changePct } = usePrice(symbol);
+  const fmt = (n: number) =>
+    `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+
+  return (
+    <div className="flex items-center justify-between py-2 border-b border-border last:border-0">
+      <div>
+        <div className="font-semibold text-sm">{symbol}</div>
+        <div className="text-xs text-muted-foreground">{name}</div>
+      </div>
+      <div className="text-right">
+        <div className="font-semibold text-sm tabular-nums">{fmt(price)}</div>
+        <div
+          className={`text-xs ${change >= 0 ? "text-green-400" : "text-red-400"}`}
+        >
+          {change >= 0 ? "+" : ""}
+          {changePct.toFixed(2)}%
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function MarketPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [prices, setPrices] = useState<Record<string, number>>(() =>
-    getSimulatedPrices(),
-  );
-  const [indexPrices, setIndexPrices] = useState<Record<string, number>>(() => {
-    const init: Record<string, number> = {};
-    for (const i of INDEX_DATA) {
-      init[i.symbol] = i.base;
-    }
-    return init;
-  });
   const marketOpen = isMarketOpen();
+  usePrices(); // subscribe to re-render on price updates
 
   useEffect(() => {
     if (!user) {
       navigate({ to: "/login" });
-      return;
     }
-    const interval = setInterval(() => {
-      setPrices(getSimulatedPrices());
-      setIndexPrices((prev) => {
-        const next = { ...prev };
-        for (const idx of INDEX_DATA) {
-          const chg = next[idx.symbol] * (Math.random() * 0.004 - 0.002);
-          next[idx.symbol] = Math.max(1, +(next[idx.symbol] + chg).toFixed(2));
-        }
-        return next;
-      });
-    }, 3000);
-    return () => clearInterval(interval);
   }, [user, navigate]);
 
   if (!user) return null;
@@ -144,59 +170,6 @@ export default function MarketPage() {
   const equities = ASSETS.filter((a) => a.type === "EQUITY");
   const etfs = ASSETS.filter((a) => a.type === "ETF");
   const fnos = ASSETS.filter((a) => a.type === "FNO");
-
-  const fmt = (n: number) =>
-    `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
-
-  const IndexCard = ({
-    symbol,
-    name,
-    base,
-  }: { symbol: string; name: string; base: number }) => {
-    const cur = indexPrices[symbol] || base;
-    const chg = cur - base;
-    const chgPct = (chg / base) * 100;
-    return (
-      <Card className="bg-card border border-gold-500/20">
-        <CardContent className="p-3">
-          <div className="text-xs text-muted-foreground mb-1">{name}</div>
-          <div className="text-lg font-bold">{fmt(cur)}</div>
-          <div
-            className={`text-xs font-semibold ${chg >= 0 ? "text-green-400" : "text-red-400"}`}
-          >
-            {chg >= 0 ? "▲" : "▼"} {Math.abs(chgPct).toFixed(2)}%
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
-
-  const PriceRow = ({
-    symbol,
-    name,
-    base,
-  }: { symbol: string; name: string; base: number }) => {
-    const cur = prices[symbol] || base;
-    const chg = cur - base;
-    const chgPct = (chg / base) * 100;
-    return (
-      <div className="flex items-center justify-between py-2 border-b border-border last:border-0">
-        <div>
-          <div className="font-semibold text-sm">{symbol}</div>
-          <div className="text-xs text-muted-foreground">{name}</div>
-        </div>
-        <div className="text-right">
-          <div className="font-semibold text-sm">{fmt(cur)}</div>
-          <div
-            className={`text-xs ${chg >= 0 ? "text-green-400" : "text-red-400"}`}
-          >
-            {chg >= 0 ? "+" : ""}
-            {chgPct.toFixed(2)}%
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
@@ -220,17 +193,12 @@ export default function MarketPage() {
       {/* Live Index Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
         {INDEX_DATA.map((idx) => (
-          <IndexCard
-            key={idx.symbol}
-            symbol={idx.symbol}
-            name={idx.name}
-            base={idx.base}
-          />
+          <IndexCard key={idx.symbol} symbol={idx.symbol} name={idx.name} />
         ))}
       </div>
 
       {/* Ticker Tape */}
-      <div className="bg-navy-900 rounded-xl mb-4 overflow-hidden border border-gold-500/10">
+      <div className="bg-card rounded-xl mb-4 overflow-hidden border border-border/30">
         <TickerTape />
       </div>
 
@@ -267,12 +235,7 @@ export default function MarketPage() {
               <Card>
                 <CardContent className="p-3 max-h-[400px] overflow-y-auto">
                   {equities.map((a) => (
-                    <PriceRow
-                      key={a.symbol}
-                      symbol={a.symbol}
-                      name={a.name}
-                      base={a.basePrice}
-                    />
+                    <PriceRow key={a.symbol} symbol={a.symbol} name={a.name} />
                   ))}
                 </CardContent>
               </Card>
@@ -281,12 +244,7 @@ export default function MarketPage() {
               <Card>
                 <CardContent className="p-3">
                   {etfs.map((a) => (
-                    <PriceRow
-                      key={a.symbol}
-                      symbol={a.symbol}
-                      name={a.name}
-                      base={a.basePrice}
-                    />
+                    <PriceRow key={a.symbol} symbol={a.symbol} name={a.name} />
                   ))}
                 </CardContent>
               </Card>
@@ -295,12 +253,7 @@ export default function MarketPage() {
               <Card>
                 <CardContent className="p-3">
                   {fnos.map((a) => (
-                    <PriceRow
-                      key={a.symbol}
-                      symbol={a.symbol}
-                      name={a.name}
-                      base={a.basePrice}
-                    />
+                    <PriceRow key={a.symbol} symbol={a.symbol} name={a.name} />
                   ))}
                 </CardContent>
               </Card>
