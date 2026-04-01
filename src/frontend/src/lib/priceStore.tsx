@@ -9,10 +9,8 @@ import {
 } from "react";
 import { ASSETS } from "./assets";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 export interface OHLCCandle {
-  time: number; // unix ms
+  time: number;
   open: number;
   high: number;
   low: number;
@@ -21,7 +19,7 @@ export interface OHLCCandle {
 
 interface PriceInfo {
   price: number;
-  open: number; // session open
+  open: number;
   change: number;
   changePct: number;
   direction: "up" | "down" | "flat";
@@ -32,21 +30,17 @@ interface PriceStore {
   prices: Record<string, PriceInfo>;
 }
 
-// ─── Market Hours ─────────────────────────────────────────────────────────────
-
-function isMarketOpen(): boolean {
+export function isMarketOpen(): boolean {
   const now = new Date();
   const istOffset = 5.5 * 60 * 60 * 1000;
   const ist = new Date(now.getTime() + istOffset);
-  const day = ist.getUTCDay(); // 0=Sun, 6=Sat
+  const day = ist.getUTCDay();
   if (day === 0 || day === 6) return false;
   const hours = ist.getUTCHours();
   const minutes = ist.getUTCMinutes();
   const totalMins = hours * 60 + minutes;
   return totalMins >= 9 * 60 + 15 && totalMins <= 15 * 60 + 30;
 }
-
-// ─── Index definitions ────────────────────────────────────────────────────────
 
 const INDEX_BASES: Record<string, number> = {
   SENSEX: 74000,
@@ -55,8 +49,6 @@ const INDEX_BASES: Record<string, number> = {
   MIDCAP100: 11000,
 };
 
-// ─── Candle generation ────────────────────────────────────────────────────────
-
 function generateHistoricalCandles(
   basePrice: number,
   count = 50,
@@ -64,8 +56,7 @@ function generateHistoricalCandles(
   const candles: OHLCCandle[] = [];
   let price = basePrice * (1 + (Math.random() - 0.5) * 0.04);
   const now = Date.now();
-  const interval = 5 * 60 * 1000; // 5 min candles
-
+  const interval = 5 * 60 * 1000;
   for (let i = count - 1; i >= 0; i--) {
     const open = price;
     const change = price * (Math.random() * 0.008 - 0.004);
@@ -88,15 +79,11 @@ function generateHistoricalCandles(
   return candles;
 }
 
-// ─── Context ──────────────────────────────────────────────────────────────────
-
 const PriceContext = createContext<PriceStore>({ prices: {} });
 
 export function PriceProvider({ children }: { children: React.ReactNode }) {
   const [prices, setPrices] = useState<Record<string, PriceInfo>>(() => {
     const init: Record<string, PriceInfo> = {};
-
-    // Stocks
     for (const asset of ASSETS) {
       const p = asset.basePrice;
       init[asset.symbol] = {
@@ -108,8 +95,6 @@ export function PriceProvider({ children }: { children: React.ReactNode }) {
         candles: generateHistoricalCandles(p),
       };
     }
-
-    // Indices
     for (const [sym, base] of Object.entries(INDEX_BASES)) {
       init[sym] = {
         price: base,
@@ -120,18 +105,16 @@ export function PriceProvider({ children }: { children: React.ReactNode }) {
         candles: generateHistoricalCandles(base),
       };
     }
-
     return init;
   });
 
   const lastCandleTime = useRef<Record<string, number>>({});
 
   const tick = useCallback(() => {
-    if (!isMarketOpen()) return;
-
+    // Always simulate price updates for demo/educational purposes.
+    // Trading order execution restrictions are handled separately via isMarketOpen() in trade pages.
     const now = Date.now();
-    const candleInterval = 30 * 1000; // new candle every 30s
-
+    const candleInterval = 30 * 1000;
     setPrices((prev) => {
       const next: Record<string, PriceInfo> = {};
       for (const [sym, info] of Object.entries(prev)) {
@@ -139,11 +122,9 @@ export function PriceProvider({ children }: { children: React.ReactNode }) {
         const newPrice = Math.max(1, +(info.price + change).toFixed(2));
         const totalChange = newPrice - info.open;
         const pct = info.open > 0 ? (totalChange / info.open) * 100 : 0;
-
         let candles = info.candles;
         const lastTime = lastCandleTime.current[sym] || 0;
         if (now - lastTime >= candleInterval) {
-          // Append new candle
           const prev_ = candles[candles.length - 1];
           const newCandle: OHLCCandle = {
             time: now,
@@ -159,7 +140,6 @@ export function PriceProvider({ children }: { children: React.ReactNode }) {
           candles = [...candles.slice(-99), newCandle];
           lastCandleTime.current[sym] = now;
         } else {
-          // Update last candle
           const last = candles[candles.length - 1];
           if (last) {
             const updated: OHLCCandle = {
@@ -171,7 +151,6 @@ export function PriceProvider({ children }: { children: React.ReactNode }) {
             candles = [...candles.slice(0, -1), updated];
           }
         }
-
         next[sym] = {
           price: newPrice,
           open: info.open,
@@ -194,8 +173,6 @@ export function PriceProvider({ children }: { children: React.ReactNode }) {
     <PriceContext.Provider value={{ prices }}>{children}</PriceContext.Provider>
   );
 }
-
-// ─── Hooks ────────────────────────────────────────────────────────────────────
 
 export function usePrice(symbol: string): PriceInfo {
   const { prices } = useContext(PriceContext);
