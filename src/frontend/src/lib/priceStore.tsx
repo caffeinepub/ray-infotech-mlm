@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { ASSETS } from "./assets";
+import { getMarketStatus } from "./marketCalendar";
 
 export interface OHLCCandle {
   time: number;
@@ -111,8 +112,8 @@ export function PriceProvider({ children }: { children: React.ReactNode }) {
   const lastCandleTime = useRef<Record<string, number>>({});
 
   const tick = useCallback(() => {
-    // Always simulate price updates for demo/educational purposes.
-    // Trading order execution restrictions are handled separately via isMarketOpen() in trade pages.
+    // Only update prices when market is open (real NSE trading hours, not on holidays)
+    if (!getMarketStatus().isOpen) return;
     const now = Date.now();
     const candleInterval = 30 * 1000;
     setPrices((prev) => {

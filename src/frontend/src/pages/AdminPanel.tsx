@@ -34,6 +34,7 @@ import {
   deleteDailyVideo,
   getDailyVideos,
   getTrades,
+  getTradesByUser,
   getUsers,
   updateUser,
 } from "../lib/store";
@@ -1600,6 +1601,9 @@ export default function AdminPanel() {
             <TrendingUp size={14} className="mr-1" />
             Tip of Day
           </TabsTrigger>
+          <TabsTrigger value="brokerage" data-ocid="admin.tab">
+            💰 Brokerage
+          </TabsTrigger>
         </TabsList>
 
         {/* Overview */}
@@ -2008,7 +2012,145 @@ export default function AdminPanel() {
         <TabsContent value="tipofday">
           <TipOfDayTab />
         </TabsContent>
+
+        {/* Brokerage */}
+        <TabsContent value="brokerage">
+          <BrokerageTab />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function BrokerageTab() {
+  const allUsers = getUsers();
+
+  const brokerageData = allUsers
+    .map((user) => {
+      const trades = getTradesByUser(user.id);
+      const totalBrokerage = trades.reduce(
+        (sum, t) => sum + (t.charges || 0),
+        0,
+      );
+      const buyTrades = trades.filter((t) => t.type === "BUY").length;
+      const sellTrades = trades.filter((t) => t.type === "SELL").length;
+      return {
+        userId: user.id,
+        name: user.name,
+        email: user.email,
+        totalBrokerage,
+        tradeCount: trades.length,
+        buyTrades,
+        sellTrades,
+      };
+    })
+    .filter((d) => d.tradeCount > 0);
+
+  const grandTotal = brokerageData.reduce(
+    (sum, d) => sum + d.totalBrokerage,
+    0,
+  );
+  const fmt2 = (n: number) => `₹${n.toFixed(2)}`;
+
+  return (
+    <div className="space-y-6">
+      {/* Summary cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border-yellow-500/30 bg-yellow-500/10">
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">
+              Total Brokerage Collected
+            </p>
+            <p className="text-3xl font-bold text-yellow-400">
+              {fmt2(grandTotal)}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">Active Traders</p>
+            <p className="text-3xl font-bold">{brokerageData.length}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">
+              Total Trades Executed
+            </p>
+            <p className="text-3xl font-bold">
+              {brokerageData.reduce((s, d) => s + d.tradeCount, 0)}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Per-user table */}
+      {brokerageData.length === 0 ? (
+        <Card data-ocid="brokerage.empty_state">
+          <CardContent className="pt-6 text-center text-muted-foreground">
+            No trades executed yet. Brokerage data will appear here once clients
+            start trading.
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Per-Client Brokerage Breakdown</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-muted-foreground">
+                    <th className="text-left py-2 pr-4">Client ID</th>
+                    <th className="text-left py-2 pr-4">Name</th>
+                    <th className="text-right py-2 pr-4">Trades</th>
+                    <th className="text-right py-2 pr-4">BUY</th>
+                    <th className="text-right py-2 pr-4">SELL</th>
+                    <th className="text-right py-2">Brokerage Earned</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {brokerageData
+                    .sort((a, b) => b.totalBrokerage - a.totalBrokerage)
+                    .map((d, idx) => (
+                      <tr
+                        key={d.userId}
+                        className="border-b border-border/30 hover:bg-muted/10"
+                        data-ocid={`brokerage.item.${idx + 1}`}
+                      >
+                        <td className="py-2 pr-4 font-mono text-xs">
+                          {d.userId}
+                        </td>
+                        <td className="py-2 pr-4">{d.name}</td>
+                        <td className="py-2 pr-4 text-right">{d.tradeCount}</td>
+                        <td className="py-2 pr-4 text-right text-green-400">
+                          {d.buyTrades}
+                        </td>
+                        <td className="py-2 pr-4 text-right text-red-400">
+                          {d.sellTrades}
+                        </td>
+                        <td className="py-2 text-right font-semibold text-yellow-400">
+                          {fmt2(d.totalBrokerage)}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 font-bold">
+                    <td colSpan={5} className="py-2 pr-4">
+                      Grand Total
+                    </td>
+                    <td className="py-2 text-right text-yellow-400 text-lg">
+                      {fmt2(grandTotal)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -17,7 +17,8 @@ import {
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "../hooks/useAuth";
-import { getSimulatedPrices, isMarketOpen } from "../lib/assets";
+import { getSimulatedPrices } from "../lib/assets";
+import { getMarketStatus } from "../lib/marketCalendar";
 import { getHoldings, getTradesByUser } from "../lib/store";
 
 export default function DashboardPage() {
@@ -61,12 +62,13 @@ export default function DashboardPage() {
     0,
   );
   const totalPnl = holdings.reduce((acc, h) => acc + h.pnl, 0);
-  const marketOpen = isMarketOpen();
+  const marketStatus = getMarketStatus();
+  const marketOpen = marketStatus.isOpen;
 
   const fmt = (n: number) =>
-    `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+    `\u20b9${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
-  const referralMessage = `Join RAY INFOTECH Demo Trading Platform! Use my referral ID ${user.id} to register. Start trading with ₹1000000 virtual money. Join now: ${window.location.origin}/register`;
+  const referralMessage = `Join RAY INFOTECH Demo Trading Platform! Use my referral ID ${user.id} to register. Start trading with \u20b91000000 virtual money. Join now: ${window.location.origin}/register`;
 
   const handleCopyId = async () => {
     try {
@@ -104,7 +106,7 @@ export default function DashboardPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold">
             Welcome, {user.name.split(" ")[0]}!
@@ -132,6 +134,35 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Market Closed / Holiday Banner */}
+      {!marketStatus.isOpen && (
+        <div className="mx-0 mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 flex items-center gap-3">
+          <span className="text-amber-400 text-lg">&#9888;&#65039;</span>
+          <div>
+            <p className="font-semibold text-amber-300">
+              {marketStatus.message}
+            </p>
+            {marketStatus.reason === "holiday" && (
+              <p className="text-sm text-amber-200/70">
+                NSE Holiday: {marketStatus.holidayName}. Market resumes next
+                trading day.
+              </p>
+            )}
+            {marketStatus.reason === "closed" && (
+              <p className="text-sm text-amber-200/70">
+                You can place orders for the next session. Trade execution
+                resumes at 9:15 AM IST.
+              </p>
+            )}
+            {marketStatus.reason === "weekend" && (
+              <p className="text-sm text-amber-200/70">
+                Market is closed on weekends. Resumes Monday at 9:15 AM IST.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Approval Banner */}
       {!isApproved && (
         <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 mb-6">
@@ -147,8 +178,8 @@ export default function DashboardPage() {
             <Badge variant="outline" className="text-xs">
               {user.paymentStatus}
             </Badge>{" "}
-            — Admin will review and approve shortly. You'll receive ₹1000000
-            virtual balance once approved.
+            &mdash; Admin will review and approve shortly. You&apos;ll receive
+            \u20b91000000 virtual balance once approved.
           </p>
         </div>
       )}
@@ -162,7 +193,7 @@ export default function DashboardPage() {
               Referral Bonus Earned: {fmt(user.referralBonus ?? 0)}
             </p>
             <p className="text-muted-foreground text-xs mt-0.5">
-              ₹5 has been added to your virtual balance for each client you
+              \u20b95 has been added to your virtual balance for each client you
               referred who got approved.
             </p>
           </div>
@@ -262,13 +293,13 @@ export default function DashboardPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Share2 size={16} className="text-gold-400" />
-              Refer &amp; Earn ₹5 per Friend
+              Refer &amp; Earn \u20b95 per Friend
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-xs text-muted-foreground">
               Share your referral ID with friends. When they register and get
-              approved, ₹5 virtual money is added to your balance.
+              approved, \u20b95 virtual money is added to your balance.
             </p>
 
             {/* Referral ID box */}

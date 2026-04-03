@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { useAuth } from "../hooks/useAuth";
 import { ASSETS, isMarketOpen } from "../lib/assets";
 import type { Asset } from "../lib/assets";
+import { getMarketStatus } from "../lib/marketCalendar";
 import { usePrices } from "../lib/priceStore";
 import { addTrade, getHoldingQty, getUserById, updateUser } from "../lib/store";
 import { backendUpdateUser } from "../lib/tradingApi";
@@ -640,7 +641,8 @@ export default function TradePage() {
     null,
   );
   const [search, setSearch] = useState("");
-  const marketOpen = isMarketOpen();
+  const marketStatus = getMarketStatus();
+  const marketOpen = marketStatus.isOpen;
   const orderPanelRef = useRef<HTMLDivElement>(null);
 
   // Handle pre-selected symbol from equity detail page query params
@@ -1039,18 +1041,23 @@ export default function TradePage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 pb-40 lg:pb-6">
-      {/* Market Closed Banner */}
-      {!marketOpen && (
+      {/* Market Closed / Holiday Banner */}
+      {!marketStatus.isOpen && (
         <div
           data-ocid="trade.market_closed.panel"
-          className="mb-4 rounded-lg bg-red-500/15 border border-red-500/30 px-4 py-3 flex items-center gap-2 text-red-400 text-sm"
+          className="mx-2 mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 flex items-center gap-3"
         >
-          <span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />
-          <span>
-            <strong>Market Closed</strong> — Trading suspended after 3:30 PM
-            IST. You can place <strong>GTT</strong> and <strong>Limit</strong>{" "}
-            orders for the next session.
-          </span>
+          <span className="text-amber-400">⚠️</span>
+          <div>
+            <p className="font-semibold text-amber-300 text-sm">
+              {marketStatus.message}
+            </p>
+            <p className="text-xs text-amber-200/70">
+              {marketStatus.reason === "holiday"
+                ? `NSE Holiday – ${marketStatus.holidayName}. Prices are frozen. Orders can be placed for next session.`
+                : "Prices are frozen. You can place Limit/GTT orders for the next trading session."}
+            </p>
+          </div>
         </div>
       )}
 
